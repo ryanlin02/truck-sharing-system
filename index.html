@@ -658,7 +658,7 @@
             </div>
             
             <!-- 新增車輛按鈕 -->
-            <div class="fab" id="add-truck-btn">+</div>
+            <div class="fab auth-only" id="add-truck-btn">+</div>
         </div>
         
         <!-- 車輛詳情頁面 -->
@@ -1654,7 +1654,49 @@
             
             // 初始化 UI
             updateUIForAuth();
+            
+            // 添加測試車輛按鈕（僅用於測試）
+            const testBtn = document.createElement('button');
+            testBtn.textContent = '添加測試車輛';
+            testBtn.className = 'btn btn-success';
+            testBtn.style.position = 'fixed';
+            testBtn.style.bottom = '130px';
+            testBtn.style.right = '20px';
+            testBtn.addEventListener('click', addTestTruck);
+            document.body.appendChild(testBtn);
         });
+
+        // 添加測試車輛數據
+        async function addTestTruck() {
+            try {
+                const testTruck = {
+                    brand: 'fuso',
+                    model: 'Super Great',
+                    type: 'cargo',
+                    price: 150,
+                    year: 2018,
+                    weight: 15,
+                    length: 24,
+                    engine: '400匹/12000cc',
+                    condition: 'good',
+                    status: 'available',
+                    description: '車況良好，輪胎新更換，引擎保養完善。',
+                    sellerName: '王小明',
+                    sellerContact: '0912-345-678',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    views: 0,
+                    images: []
+                };
+                
+                await db.collection('trucks').add(testTruck);
+                alert('測試車輛已添加');
+                loadTrucks(true);
+            } catch (error) {
+                console.error('添加測試車輛失敗:', error);
+                alert('添加測試車輛失敗: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html>
