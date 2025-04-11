@@ -817,13 +817,13 @@
                 <div class="nav-icon">🏠</div>
                 <div>首頁</div>
             </a>
-            <a href="#" class="nav-item" data-page="home-page">
+            <a href="#" class="nav-item" id="search-nav-btn">
                 <div class="nav-icon">🔍</div>
                 <div>搜尋</div>
             </a>
             <a href="#" class="nav-item" data-page="login-page">
                 <div class="nav-icon">👤</div>
-                <div>我的</div>
+                <div>登入</div>
             </a>
         </div>
     </div>
@@ -904,6 +904,19 @@
                 }
             });
         });
+
+        // 搜尋按鈕點擊處理
+        document.getElementById('search-nav-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('home-page');
+            // 顯示搜尋與篩選面板
+            const filterContent = document.getElementById('filterContent');
+            const filterToggle = document.getElementById('filterToggle');
+            filterContent.classList.add('show');
+            filterToggle.querySelector('.toggle-icon').textContent = '▲';
+            // 讓頁面滾動到搜尋區域
+            document.querySelector('.filter-section').scrollIntoView({ behavior: 'smooth' });
+        });
         
         // ============ 車輛列表功能 ============
         
@@ -922,64 +935,79 @@
                 if (activeFilters.status && activeFilters.status !== 'all') {
                     query = query.where('status', '==', activeFilters.status);
                 }
-                
+
                 if (activeFilters.brand) {
                     query = query.where('brand', '==', activeFilters.brand);
                 }
-                
+
                 if (activeFilters.type) {
                     query = query.where('type', '==', activeFilters.type);
                 }
-                
-                // 添加排序
-                switch (activeFilters.sortBy) {
-                    case 'price-asc':
-                        query = query.orderBy('price', 'asc');
-                        break;
-                    case 'price-desc':
-                        query = query.orderBy('price', 'desc');
-                        break;
-                    case 'year-asc':
-                        query = query.orderBy('year', 'asc');
-                        break;
-                    case 'year-desc':
-                        query = query.orderBy('year', 'desc');
-                        break;
-                    case 'popular':
-                        query = query.orderBy('views', 'desc');
-                        break;
-                    default:
-                        query = query.orderBy('createdAt', 'desc'); // 默認按上架時間排序
+
+                // 暫存查詢結果，用於後續本地篩選
+                let querySnapshot = await query.get();
+                let filteredDocs = querySnapshot.docs;
+
+                // 對於 Firestore 不支援的複合查詢，我們在前端進行篩選
+                if (activeFilters.priceMin || activeFilters.priceMax || 
+                    activeFilters.yearMin || activeFilters.yearMax || 
+                    activeFilters.weight || activeFilters.length || 
+                    activeFilters.keyword) {
+                    
+                    filteredDocs = filteredDocs.filter(doc => {
+                        const data = doc.data();
+                        
+                        // 價格範圍篩選
+                        if (activeFilters.priceMin && data.price < parseFloat(activeFilters.priceMin)) return false;
+                        if (activeFilters.priceMax && data.price > parseFloat(activeFilters.priceMax)) return false;
+                        
+                        // 年份範圍篩選
+                        if (activeFilters.yearMin && data.year < parseInt(activeFilters.yearMin)) return false;
+                        if (activeFilters.yearMax && data.year > parseInt(activeFilters.yearMax)) return false;
+                        
+                        // 載重篩選
+                        if (activeFilters.weight && data.weight < parseFloat(activeFilters.weight)) return false;
+                        
+                        // 車身長度篩選
+                        if (activeFilters.length && data.length < parseFloat(activeFilters.length)) return false;
+                        
+                        // 關鍵字搜尋 (搜尋品牌、型號、描述等多個欄位)
+                        if (activeFilters.keyword) {
+                            const keyword = activeFilters.keyword.toLowerCase();
+                            const searchText = (
+                                (data.brand || '') + ' ' +
+                                (data.model || '') + ' ' +
+                                (data.description || '') + ' ' +
+                                (data.sellerName || '')
+                            ).toLowerCase();
+                            
+                            if (!searchText.includes(keyword)) return false;
+                        }
+                        
+                        return true;
+                    });
                 }
-                
-                // 分頁處理
-                if (!isInitialLoad && lastVisibleTruck) {
-                    query = query.startAfter(lastVisibleTruck);
-                }
-                
-                // 限制每次加載數量
-                query = query.limit(10);
-                
-                // 執行查詢
-                const snapshots = await query.get();
-                
+
                 // 清空列表 (如果是初始載入)
                 if (isInitialLoad) {
                     truckList.innerHTML = '';
                 }
-                
-                // 更新最後可見文檔
-                if (!snapshots.empty) {
-                    lastVisibleTruck = snapshots.docs[snapshots.docs.length - 1];
-                }
-                
-                if (snapshots.empty && isInitialLoad) {
+
+                // 檢查是否有符合條件的車輛
+                if (filteredDocs.length === 0 && isInitialLoad) {
                     truckList.innerHTML = '<p class="text-center">沒有符合條件的車輛</p>';
+                    loadingIndicator.style.display = 'none';
+                    isLoadingMore = false;
                     return;
                 }
-                
+
+                // 更新最後可見文檔
+                if (filteredDocs.length > 0) {
+                    lastVisibleTruck = filteredDocs[filteredDocs.length - 1];
+                }
+
                 // 渲染車輛卡片
-                snapshots.forEach(doc => {
+                filteredDocs.forEach(doc => {
                     const truck = { id: doc.id, ...doc.data() };
                     truckList.appendChild(createTruckCard(truck));
                 });
