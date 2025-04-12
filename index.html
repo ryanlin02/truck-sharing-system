@@ -1569,7 +1569,7 @@
         }
         
         // 創建車輛卡片元素
-        function createTruckCard(truck) {
+        function createTruckCard(truck, isFavoritesList = false) {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.id = truck.id;
@@ -1602,6 +1602,10 @@
                 'scania': '斯堪尼亞',
                 'mercedes': '賓士',
                 'man': '曼恩',
+                'daf': '達富',
+                'iveco': '依維柯',
+                'sitrak': '賽德卡',
+                'ud': '優迪',
                 'other': '其他'
             };
             
@@ -1613,6 +1617,10 @@
                 'refrigerated': '冷凍車',
                 'tanker': '槽車',
                 'crane': '吊車',
+                'tractor': '曳引車',
+                'box': '框式車',
+                'concrete': '混凝土預拌車',
+                'water': '灑水車',
                 'other': '其他'
             };
             
@@ -1640,6 +1648,17 @@
             card.addEventListener('click', () => {
                 viewTruckDetail(truck.id);
             });
+            
+            // 添加收藏按鈕事件處理
+            if (currentUser) {
+                const favoriteBtn = card.querySelector('.favorite-btn');
+                if (favoriteBtn) {
+                    favoriteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止卡片點擊事件
+                        toggleFavorite(truck.id, favoriteBtn);
+                    });
+                }
+            }
             
             return card;
         }
