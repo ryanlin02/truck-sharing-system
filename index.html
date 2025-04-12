@@ -943,6 +943,23 @@
             </div>
         </div>
 
+        <!-- 註冊成功模態視窗 -->
+        <div id="register-success-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>註冊成功</h3>
+                    <span class="close" id="close-register-success-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>您的帳號已經成功註冊！</p>
+                    <p>首次開通密碼已發送到您的電子郵件，請查收後登入系統。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="go-to-login-btn">前往登入</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 導航欄 -->
         <div class="navbar">
             <a href="#" class="nav-item active" data-page="home-page">
@@ -1905,11 +1922,15 @@
             }
         });
         
-        // 註冊連結點擊事件 (預留功能)
+        // 註冊連結點擊事件
         document.getElementById('register-link').addEventListener('click', (e) => {
             e.preventDefault();
-            // 顯示註冊表單 (這裡可以擴展註冊功能)
-            alert('註冊功能尚未開放，請聯絡管理員');
+            showPage('register-page');
+        });
+
+        // 返回登入按鈕事件
+        document.getElementById('back-to-login').addEventListener('click', () => {
+            showPage('login-page');
         });
 
         // 忘記密碼相關功能
@@ -1978,6 +1999,181 @@
                 sendResetBtn.disabled = false;
             }
         });
+
+        // ============ 註冊功能 ============
+
+        // 所屬科別選項
+        const departmentOptions = {
+            headquarter: ['總公司'],
+            north: ['台北一科', '台北二科', '台北三科', '台北四科'],
+            central: ['中壢一科', '中壢二科', '中壢三科', '中壢四科', '新竹科', '台中一科', '台中二科', '台中三科', '嘉雲科'],
+            south: ['台南科', '高雄一科', '高雄二科', '高雄三科']
+        };
+
+        // 根據選擇的地區更新科別選項
+        document.getElementById('register-region').addEventListener('change', function() {
+            const region = this.value;
+            const departmentSelect = document.getElementById('register-department');
+            
+            // 清空現有選項
+            departmentSelect.innerHTML = '';
+            
+            if (!region) {
+                departmentSelect.innerHTML = '<option value="">請先選擇地區</option>';
+                departmentSelect.disabled = true;
+                return;
+            }
+            
+            // 添加新選項
+            departmentSelect.disabled = false;
+            departmentSelect.innerHTML = '<option value="">選擇科別</option>';
+            
+            departmentOptions[region].forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                departmentSelect.appendChild(option);
+            });
+        });
+
+        // 員工編號驗證
+        document.getElementById('register-employee-id').addEventListener('input', function() {
+            const value = this.value.replace(/\D/g, ''); // 只保留數字
+            this.value = value;
+            
+            // 驗證4-5位數字
+            if (value.length > 5) {
+                this.value = value.slice(0, 5);
+            }
+        });
+
+        // 電話號碼驗證（分機和手機）
+        ['register-extension', 'register-phone'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                const value = this.value.replace(/\D/g, ''); // 只保留數字
+                this.value = value;
+            });
+        });
+
+        // 註冊表單提交
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('register-email').value;
+            const region = document.getElementById('register-region').value;
+            const department = document.getElementById('register-department').value;
+            const employeeId = document.getElementById('register-employee-id').value;
+            const extension = document.getElementById('register-extension').value;
+            const phone = document.getElementById('register-phone').value;
+            const companyEmail = document.getElementById('register-company-email').value;
+            const fullCompanyEmail = companyEmail ? `${companyEmail}@chailease.com.tw` : '';
+            
+            // 表單驗證
+            if (!email || !region || !department || !employeeId || !extension || !phone) {
+                document.getElementById('register-message').innerHTML = '<p style="color: red;">請填寫所有必填欄位</p>';
+                return;
+            }
+            
+            if (!/^\d{4,5}$/.test(employeeId)) {
+                document.getElementById('register-message').innerHTML = '<p style="color: red;">員工編號必須是4-5位數字</p>';
+                return;
+            }
+            
+            // 禁用提交按鈕防止重複提交
+            const submitBtn = document.querySelector('#register-form button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '處理中...';
+            
+            try {
+                // 檢查電子郵件是否已存在
+                const emailExists = await checkEmailExists(email);
+                if (emailExists) {
+                    document.getElementById('register-message').innerHTML = '<p style="color: red;">此電子郵件已被註冊</p>';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalBtnText;
+                    return;
+                }
+                
+                // 生成隨機密碼
+                const randomPassword = generateRandomPassword();
+                
+                // 創建用戶帳號
+                const userCredential = await auth.createUserWithEmailAndPassword(email, randomPassword);
+                const userId = userCredential.user.uid;
+                
+                // 發送首次開通密碼郵件
+                await auth.sendPasswordResetEmail(email);
+                
+                // 儲存用戶資料到 Firestore
+                await db.collection('users').doc(userId).set({
+                    email: email,
+                    region: region,
+                    department: department,
+                    employeeId: employeeId,
+                    extension: extension,
+                    phone: phone,
+                    companyEmail: fullCompanyEmail,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    truckCount: 0
+                });
+                
+                // 顯示註冊成功訊息
+                document.getElementById('register-form').reset();
+                document.getElementById('register-success-modal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('註冊失敗:', error);
+                let errorMessage = '註冊失敗，請稍後再試';
+                
+                // 根據錯誤類型顯示特定訊息
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = '此電子郵件已被註冊';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = '無效的電子郵件格式';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = '密碼強度不足';
+                }
+                
+                document.getElementById('register-message').innerHTML = `<p style="color: red;">${errorMessage}</p>`;
+            } finally {
+                // 恢復提交按鈕
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
+            }
+        });
+
+        // 檢查電子郵件是否已存在
+        async function checkEmailExists(email) {
+            try {
+                const methods = await firebase.auth().fetchSignInMethodsForEmail(email);
+                return methods.length > 0;
+            } catch (error) {
+                console.error('檢查電子郵件失敗:', error);
+                return false;
+            }
+        }
+
+        // 生成隨機密碼
+        function generateRandomPassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+            let password = '';
+            for (let i = 0; i < 12; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return password;
+        }
+
+        // 註冊成功模態視窗相關事件
+        document.getElementById('close-register-success-modal').addEventListener('click', () => {
+            document.getElementById('register-success-modal').style.display = 'none';
+            showPage('login-page');
+        });
+
+        document.getElementById('go-to-login-btn').addEventListener('click', () => {
+            document.getElementById('register-success-modal').style.display = 'none';
+            showPage('login-page');
+        });
         
         // ============ 離線功能 ============
         
@@ -2041,6 +2237,70 @@
                 showPage('login-page');
             }
         });
+
+        <!-- 註冊頁面 -->
+        <div id="register-page" class="page">
+            <div class="container">
+                <h1 class="mb-3">註冊新帳號</h1>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="register-email">電子郵件</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-region">所屬地區</label>
+                        <select id="register-region" required>
+                            <option value="">選擇地區</option>
+                            <option value="headquarter">總公司</option>
+                            <option value="north">北區</option>
+                            <option value="central">中區</option>
+                            <option value="south">南區</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-department">所屬科別</label>
+                        <select id="register-department" required disabled>
+                            <option value="">請先選擇地區</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-employee-id">員工編號 (4-5位數字)</label>
+                        <input type="text" id="register-employee-id" pattern="[0-9]{4,5}" required>
+                        <small>只能輸入4位或5位數字</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-extension">公司分機</label>
+                        <input type="tel" id="register-extension" pattern="[0-9]*" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-phone">個人手機</label>
+                        <input type="tel" id="register-phone" pattern="[0-9]*" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-company-email">公司信箱</label>
+                        <div style="display: flex;">
+                            <input type="text" id="register-company-email" placeholder="username" style="flex: 1;">
+                            <span style="padding: 8px 0; align-self: center;">@chailease.com.tw</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block">註冊帳號</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="button" class="btn btn-block" id="back-to-login">返回登入</button>
+                    </div>
+                </form>
+                <div id="register-message" class="mt-2 text-center"></div>
+            </div>
+        </div>
 
         // 顯示用戶個人資料
         function showUserProfile() {
