@@ -869,6 +869,9 @@
                     <div class="form-group">
                         <button type="submit" class="btn btn-success btn-block">登入</button>
                     </div>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-block" id="forgot-password-btn">忘記密碼</button>
+                    </div>
                     <p class="text-center mt-2">
                         <a href="#" id="register-link">註冊新帳號</a>
                     </p>
@@ -914,6 +917,28 @@
                 <!-- 搜尋結果列表 -->
                 <div class="card-list" id="search-results">
                     <!-- 搜尋結果將在這裡顯示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 忘記密碼模態視窗 -->
+        <div id="forgot-password-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>忘記密碼</h3>
+                    <span class="close" id="close-forgot-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>請輸入您註冊時使用的電子郵件地址，我們將發送重設密碼的連結。</p>
+                    <div class="form-group">
+                        <label for="reset-email">電子郵件</label>
+                        <input type="email" id="reset-email" required>
+                    </div>
+                    <div id="reset-message"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="send-reset-btn">發送重設連結</button>
+                    <button type="button" class="btn" id="cancel-reset-btn">取消</button>
                 </div>
             </div>
         </div>
@@ -1885,6 +1910,73 @@
             e.preventDefault();
             // 顯示註冊表單 (這裡可以擴展註冊功能)
             alert('註冊功能尚未開放，請聯絡管理員');
+        });
+
+        // 忘記密碼相關功能
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+        const closeForgotModal = document.getElementById('close-forgot-modal');
+        const sendResetBtn = document.getElementById('send-reset-btn');
+        const cancelResetBtn = document.getElementById('cancel-reset-btn');
+        const resetMessage = document.getElementById('reset-message');
+
+        // 打開忘記密碼模態視窗
+        forgotPasswordBtn.addEventListener('click', () => {
+            forgotPasswordModal.style.display = 'block';
+            document.getElementById('reset-email').value = '';
+            resetMessage.innerHTML = '';
+        });
+
+        // 關閉模態視窗的不同方式
+        closeForgotModal.addEventListener('click', () => {
+            forgotPasswordModal.style.display = 'none';
+        });
+
+        cancelResetBtn.addEventListener('click', () => {
+            forgotPasswordModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === forgotPasswordModal) {
+                forgotPasswordModal.style.display = 'none';
+            }
+        });
+
+        // 發送重設密碼郵件
+        sendResetBtn.addEventListener('click', async () => {
+            const email = document.getElementById('reset-email').value;
+            
+            if (!email) {
+                resetMessage.innerHTML = '<p style="color: red;">請輸入電子郵件地址</p>';
+                return;
+            }
+            
+            try {
+                // 顯示處理中訊息
+                resetMessage.innerHTML = '<p>處理中，請稍候...</p>';
+                sendResetBtn.disabled = true;
+                
+                // 使用 Firebase Auth 發送重設密碼郵件
+                await auth.sendPasswordResetEmail(email);
+                
+                // 成功發送
+                resetMessage.innerHTML = '<p style="color: green;">重設密碼連結已發送到您的電子郵件。請檢查您的收件匣。</p>';
+                setTimeout(() => {
+                    forgotPasswordModal.style.display = 'none';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('發送重設密碼郵件失敗:', error);
+                
+                // 根據錯誤碼顯示相應訊息
+                if (error.code === 'auth/user-not-found') {
+                    resetMessage.innerHTML = '<p style="color: red;">此電子郵件尚未註冊</p>';
+                } else {
+                    resetMessage.innerHTML = `<p style="color: red;">發送失敗: ${error.message}</p>`;
+                }
+            } finally {
+                sendResetBtn.disabled = false;
+            }
         });
         
         // ============ 離線功能 ============
