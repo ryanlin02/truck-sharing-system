@@ -1559,13 +1559,18 @@
                 // 更新分頁按鈕狀態
                 document.getElementById('prev-page').disabled = currentPage <= 1;
                 document.getElementById('next-page').disabled = currentPage >= totalPages;
-                
-            } catch (error) {
-                console.error('載入車輛失敗:', error);
-                alert('載入車輛失敗，請稍後再試');
-            } finally {
-                isLoadingMore = false;
-            }
+
+                // 更新收藏按鈕狀態
+                if (currentUser) {
+                    updateFavoriteButtons();
+                }
+
+                } catch (error) {
+                    console.error('載入車輛失敗:', error);
+                    alert('載入車輛失敗，請稍後再試');
+                } finally {
+                    isLoadingMore = false;
+                }
         }
         
         // 創建車輛卡片元素
@@ -1901,6 +1906,20 @@
                 
                 // 顯示詳情頁
                 showPage('detail-page');
+
+                // 添加收藏按鈕事件處理
+                const favoriteDetailBtn = document.querySelector('.favorite-detail-btn');
+                if (favoriteDetailBtn) {
+                    favoriteDetailBtn.addEventListener('click', () => {
+                        toggleFavorite(truckId, favoriteDetailBtn);
+                    });
+                }
+
+                // 設置分享按鈕
+                setupShareButton();
+
+                // 更新收藏按鈕狀態
+                updateFavoriteButtons();
                 
             } catch (error) {
                 console.error('載入車輛詳情失敗:', error);
@@ -2215,6 +2234,12 @@
                 
                 // 更新導覽列
                 document.getElementById('profile-nav-btn').querySelector('div').textContent = '個人';
+                
+                // 更新收藏按鈕狀態
+                updateFavoriteButtons();
+                
+                // 加載用戶角色
+                loadUserRole();
             } else {
                 // 用戶未登入
                 document.querySelectorAll('.auth-only').forEach(el => {
