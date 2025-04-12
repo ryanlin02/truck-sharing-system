@@ -542,6 +542,116 @@
             margin-bottom: var(--spacing-md);
         }
 
+        /* 收藏按鈕樣式 */
+        .favorite-btn {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--primary-color);
+            padding: 4px 8px;
+            font-size: var(--font-size-sm);
+        }
+
+        .favorite-btn:hover {
+            background-color: var(--light-color);
+        }
+
+        .favorite-icon {
+            color: var(--primary-color);
+            font-size: 16px;
+        }
+
+        .favorite-active .favorite-icon {
+            color: var(--warning-color);
+        }
+
+        .favorite-active .favorite-icon:before {
+            content: '\2605'; /* 實心星星 */
+        }
+
+        /* 分享按鈕樣式 */
+        .share-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .share-btn {
+            text-align: center;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            background-color: var(--light-color);
+            color: var(--text-color);
+        }
+
+        #copy-link-btn {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        #share-line-btn {
+            background-color: #06C755;
+            color: white;
+        }
+
+        #share-facebook-btn {
+            background-color: #1877F2;
+            color: white;
+        }
+
+        #generate-pdf-btn {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .share-icon {
+            margin-right: 5px;
+            font-size: var(--font-size-lg);
+        }
+
+        /* 用戶管理樣式 */
+        .user-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 0;
+        }
+
+        .user-info {
+            margin-bottom: 5px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            margin-left: 5px;
+        }
+
+        .role-user {
+            background-color: var(--light-color);
+            color: var(--text-color);
+        }
+
+        .role-manager {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .role-admin {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
     </style>
 </head>
 <body>
@@ -888,6 +998,16 @@
                         <label for="register-email">電子郵件</label>
                         <input type="email" id="register-email" required>
                     </div>
+
+                    <div class="form-group">
+                        <label for="register-name">姓名 <span style="color: red;">*</span></label>
+                        <input type="text" id="register-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-nickname">暱稱</label>
+                        <input type="text" id="register-nickname" placeholder="選填">
+                    </div>
                     
                     <div class="form-group">
                         <label for="register-region">所屬地區</label>
@@ -906,11 +1026,19 @@
                             <option value="">請先選擇地區</option>
                         </select>
                     </div>
+
+                    <div class="form-group">
+                        <label for="register-role">職位角色</label>
+                        <select id="register-role" required>
+                            <option value="user">業務</option>
+                            <option value="manager">經理</option>
+                            <option value="admin">管理員</option>
+                        </select>
+                    </div>
                     
                     <div class="form-group">
-                        <label for="register-employee-id">員工編號 (4-5位數字)</label>
+                        <label for="register-employee-id">員工編號</label>
                         <input type="text" id="register-employee-id" pattern="[0-9]{4,5}" required>
-                        <small>只能輸入4位或5位數字</small>
                     </div>
                     
                     <div class="form-group">
@@ -952,10 +1080,30 @@
                         <div id="user-profile">
                             <!-- 用戶資料會動態生成 -->
                         </div>
+                        <div id="admin-panel" class="mt-2" style="display: none;">
+                            <button class="btn btn-warning btn-block" id="admin-console-btn">進入管理控制台</button>
+                        </div>
                         <div class="form-group mt-2">
                             <button type="button" class="btn btn-danger btn-block" id="logout-btn">登出帳號</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 收藏車輛頁面 -->
+        <div id="favorites-page" class="page">
+            <div class="container">
+                <h1 class="mb-3">我的收藏</h1>
+                <div id="favorites-count" class="mb-2 text-center">
+                    您已收藏 <span id="total-favorites">0</span> 台車輛
+                </div>
+                <div class="card-list" id="favorites-list">
+                    <!-- 收藏車輛會在這裡顯示 -->
+                </div>
+                <div id="no-favorites" class="text-center" style="display: none;">
+                    <p>您還沒有收藏任何車輛</p>
+                    <button class="btn mt-2" id="browse-trucks-btn">瀏覽車輛</button>
                 </div>
             </div>
         </div>
@@ -981,6 +1129,52 @@
                 <!-- 搜尋結果列表 -->
                 <div class="card-list" id="search-results">
                     <!-- 搜尋結果將在這裡顯示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理員頁面 -->
+        <div id="admin-page" class="page">
+            <div class="container">
+                <h1 class="mb-3">管理員控制台</h1>
+                
+                <div class="card mb-3">
+                    <div class="card-content">
+                        <h3 class="mb-1">用戶管理</h3>
+                        <p>管理系統用戶及權限</p>
+                        <button class="btn btn-block mt-1" id="manage-users-btn">管理用戶</button>
+                    </div>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-content">
+                        <h3 class="mb-1">系統設定</h3>
+                        <p>設定系統參數及選項</p>
+                        <button class="btn btn-block mt-1" id="system-settings-btn">系統設定</button>
+                    </div>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-content">
+                        <h3 class="mb-1">車輛類別管理</h3>
+                        <p>管理車輛分類及選項</p>
+                        <button class="btn btn-block mt-1" id="manage-categories-btn">管理類別</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用戶管理模態視窗 -->
+        <div id="user-management-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>用戶管理</h3>
+                    <span class="close" id="close-user-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="user-list-container">
+                        <p class="text-center">載入中...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1024,6 +1218,33 @@
             </div>
         </div>
 
+        <!-- 分享車輛模態視窗 -->
+        <div id="share-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>分享車輛</h3>
+                    <span class="close" id="close-share-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="share-options">
+                        <button class="btn share-btn" id="copy-link-btn">
+                            <i class="share-icon">&#128279;</i> 複製連結
+                        </button>
+                        <button class="btn share-btn" id="share-line-btn">
+                            <i class="share-icon">L</i> Line
+                        </button>
+                        <button class="btn share-btn" id="share-facebook-btn">
+                            <i class="share-icon">f</i> Facebook
+                        </button>
+                        <button class="btn share-btn" id="generate-pdf-btn">
+                            <i class="share-icon">&#128196;</i> 產生 PDF
+                        </button>
+                    </div>
+                    <div id="share-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- 導航欄 -->
         <div class="navbar">
             <a href="#" class="nav-item active" data-page="home-page">
@@ -1031,6 +1252,9 @@
             </a>
             <a href="#" class="nav-item" id="search-nav-btn">
                 <div>搜尋</div>
+            </a>
+            <a href="#" class="nav-item auth-only" id="favorites-nav-btn">
+                <div>收藏</div>
             </a>
             <a href="#" class="nav-item" id="discussion-nav-btn">
                 <div>討論</div>
@@ -1406,6 +1630,9 @@
                         <span>${truck.length}呎</span>
                     </div>
                     <div>業務：${truck.sellerName} <br> 電話：${truck.sellerContact}</div>
+                    <button class="btn favorite-btn mt-1 auth-only" data-id="${truck.id}">
+                        <i class="favorite-icon">&#9734;</i> 收藏
+                    </button>
                 </div>
             `;
             
@@ -1618,6 +1845,18 @@
                             <div class="mt-2">
                                 <a href="tel:${truck.sellerContact}" class="btn btn-success btn-block">撥打電話</a>
                             </div>
+
+                            <div class="mt-1 auth-only">
+                                <button class="btn btn-block favorite-detail-btn" data-id="${truck.id}">
+                                    <i class="favorite-icon">&#9734;</i> 收藏此車輛
+                                </button>
+                            </div>
+
+                            <div class="mt-1">
+                                <button class="btn btn-warning btn-block" id="share-truck-btn">
+                                    <i class="share-icon">&#8594;</i> 分享車輛
+                                </button>
+                            </div>
                             
                             ${currentUser ? `
                                 <div class="mt-1">
@@ -1711,6 +1950,7 @@
         backToListBtn.addEventListener('click', () => {
             showPage('home-page');
         });
+
         
         // ============ 車輛新增/編輯功能 ============
         
@@ -2124,6 +2364,8 @@
             e.preventDefault();
             
             const email = document.getElementById('register-email').value;
+            const name = document.getElementById('register-name').value; // 新增
+            const nickname = document.getElementById('register-nickname').value; // 新增
             const region = document.getElementById('register-region').value;
             const department = document.getElementById('register-department').value;
             const employeeId = document.getElementById('register-employee-id').value;
@@ -2133,7 +2375,7 @@
             const fullCompanyEmail = companyEmail ? `${companyEmail}@chailease.com.tw` : '';
             
             // 表單驗證
-            if (!email || !region || !department || !employeeId || !extension || !phone) {
+            if (!email || !name || !region || !department || !employeeId || !extension || !phone) {
                 document.getElementById('register-message').innerHTML = '<p style="color: red;">請填寫所有必填欄位</p>';
                 return;
             }
@@ -2172,6 +2414,8 @@
                 // 儲存用戶資料到 Firestore
                 await db.collection('users').doc(userId).set({
                     email: email,
+                    name: name, // 新增
+                    nickname: nickname, // 新增
                     region: region,
                     department: department,
                     employeeId: employeeId,
@@ -2323,8 +2567,20 @@
                         <h3 class="mb-1">個人資訊</h3>
                         <table style="width: 100%; margin-bottom: 15px;">
                             <tr>
+                                <td style="width: 40%; font-weight: bold;">姓名</td>
+                                <td>${userData.name || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">暱稱</td>
+                                <td>${userData.nickname || '未設定'}</td>
+                            </tr>
+                            <tr>
                                 <td style="width: 40%; font-weight: bold;">電子郵件</td>
                                 <td>${currentUser.email}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">公司信箱</td>
+                                <td>${userData.companyEmail || '未設定'}</td>
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">員工編號</td>
@@ -2332,7 +2588,7 @@
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">所屬分公司</td>
-                                <td>${userData.branch}</td>
+                                <td>${userData.region || '未設定'} - ${userData.department || '未設定'}</td>
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">分機號碼</td>
@@ -2368,6 +2624,641 @@
                 alert('登出失敗: ' + error.message);
             }
         });
+
+        // ============ 收藏功能 ============
+
+        // 收藏導航按鈕點擊事件
+        document.getElementById('favorites-nav-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                alert('請先登入以使用收藏功能');
+                showPage('login-page');
+                return;
+            }
+            loadFavorites();
+            showPage('favorites-page');
+        });
+
+        // 瀏覽車輛按鈕點擊事件
+        document.getElementById('browse-trucks-btn').addEventListener('click', function() {
+            showPage('home-page');
+        });
+
+        // 載入用戶收藏的車輛
+        async function loadFavorites() {
+            if (!currentUser) return;
+            
+            try {
+                // 獲取用戶的收藏
+                const favoritesSnapshot = await db.collection('users').doc(currentUser.uid).collection('favorites').get();
+                
+                // 獲取收藏數量
+                const favoritesCount = favoritesSnapshot.size;
+                document.getElementById('total-favorites').textContent = favoritesCount;
+                
+                // 顯示收藏列表或空收藏提示
+                const favoritesList = document.getElementById('favorites-list');
+                const noFavorites = document.getElementById('no-favorites');
+                
+                if (favoritesCount === 0) {
+                    favoritesList.innerHTML = '';
+                    noFavorites.style.display = 'block';
+                    return;
+                }
+                
+                noFavorites.style.display = 'none';
+                favoritesList.innerHTML = '<p class="text-center">載入中...</p>';
+                
+                // 獲取所有收藏的車輛 ID
+                const favoriteIds = favoritesSnapshot.docs.map(doc => doc.id);
+                
+                // 一次獲取多個車輛文檔
+                const trucks = await Promise.all(
+                    favoriteIds.map(id => db.collection('trucks').doc(id).get())
+                );
+                
+                // 清空列表
+                favoritesList.innerHTML = '';
+                
+                // 渲染收藏的車輛
+                trucks.forEach(doc => {
+                    if (doc.exists) {
+                        const truck = { id: doc.id, ...doc.data() };
+                        const card = createTruckCard(truck, true); // 第二個參數表示這是收藏列表
+                        favoritesList.appendChild(card);
+                    }
+                });
+                
+                // 更新收藏按鈕狀態
+                updateFavoriteButtons();
+                
+            } catch (error) {
+                console.error('載入收藏失敗:', error);
+                document.getElementById('favorites-list').innerHTML = '<p class="text-center">載入收藏失敗，請稍後再試</p>';
+            }
+        }
+
+        // 更新 createTruckCard 函數以支持收藏功能
+        function createTruckCard(truck, isFavoritesList = false) {
+            // [原有的卡片創建代碼保持不變]
+            
+            // 在返回卡片之前，添加收藏按鈕事件處理
+            const card = document.createElement('div');
+            // [原有的卡片創建代碼...]
+            
+            // 在返回卡片前添加這段代碼:
+            // 添加收藏按鈕事件處理
+            if (currentUser) {
+                const favoriteBtn = card.querySelector('.favorite-btn');
+                if (favoriteBtn) {
+                    favoriteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止卡片點擊事件
+                        toggleFavorite(truck.id, favoriteBtn);
+                    });
+                }
+            }
+            
+            return card;
+        }
+
+        // 切換收藏狀態
+        async function toggleFavorite(truckId, button) {
+            if (!currentUser) {
+                alert('請先登入以使用收藏功能');
+                showPage('login-page');
+                return;
+            }
+            
+            try {
+                const favoriteRef = db.collection('users').doc(currentUser.uid).collection('favorites').doc(truckId);
+                const doc = await favoriteRef.get();
+                
+                if (doc.exists) {
+                    // 取消收藏
+                    await favoriteRef.delete();
+                    button.classList.remove('favorite-active');
+                    button.innerHTML = `<i class="favorite-icon">&#9734;</i> 收藏`;
+                    
+                    // 如果在收藏列表中，移除該卡片
+                    if (document.getElementById('favorites-page').classList.contains('active')) {
+                        const card = button.closest('.card');
+                        if (card) {
+                            card.remove();
+                            
+                            // 更新收藏數量
+                            const totalFavorites = document.getElementById('favorites-list').querySelectorAll('.card').length;
+                            document.getElementById('total-favorites').textContent = totalFavorites;
+                            
+                            // 如果沒有收藏了，顯示空收藏提示
+                            if (totalFavorites === 0) {
+                                document.getElementById('no-favorites').style.display = 'block';
+                            }
+                        }
+                    }
+                } else {
+                    // 添加收藏
+                    await favoriteRef.set({
+                        addedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    button.classList.add('favorite-active');
+                    button.innerHTML = `<i class="favorite-icon">&#9733;</i> 已收藏`;
+                }
+            } catch (error) {
+                console.error('操作收藏失敗:', error);
+                alert('操作失敗，請稍後再試');
+            }
+        }
+
+        // 更新所有收藏按鈕的狀態
+        async function updateFavoriteButtons() {
+            if (!currentUser) return;
+            
+            try {
+                // 獲取用戶的所有收藏
+                const favoritesSnapshot = await db.collection('users').doc(currentUser.uid).collection('favorites').get();
+                const favoriteIds = new Set(favoritesSnapshot.docs.map(doc => doc.id));
+                
+                // 更新所有收藏按鈕
+                document.querySelectorAll('.favorite-btn').forEach(btn => {
+                    const truckId = btn.dataset.id;
+                    if (favoriteIds.has(truckId)) {
+                        btn.classList.add('favorite-active');
+                        btn.innerHTML = `<i class="favorite-icon">&#9733;</i> 已收藏`;
+                    } else {
+                        btn.classList.remove('favorite-active');
+                        btn.innerHTML = `<i class="favorite-icon">&#9734;</i> 收藏`;
+                    }
+                });
+                
+                // 更新詳情頁面的收藏按鈕
+                const detailBtn = document.querySelector('.favorite-detail-btn');
+                if (detailBtn) {
+                    const truckId = detailBtn.dataset.id;
+                    if (favoriteIds.has(truckId)) {
+                        detailBtn.classList.add('favorite-active');
+                        detailBtn.innerHTML = `<i class="favorite-icon">&#9733;</i> 已收藏此車輛`;
+                    } else {
+                        detailBtn.classList.remove('favorite-active');
+                        detailBtn.innerHTML = `<i class="favorite-icon">&#9734;</i> 收藏此車輛`;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('更新收藏按鈕失敗:', error);
+            }
+        }
+
+        // 修改車輛詳情函數以支持收藏功能
+        function viewTruckDetail(truckId) {
+            // [原有代碼保持不變]
+            
+            // 在詳情頁面顯示後，添加以下代碼:
+            // 添加收藏按鈕事件處理
+            const favoriteDetailBtn = document.querySelector('.favorite-detail-btn');
+            if (favoriteDetailBtn) {
+                favoriteDetailBtn.addEventListener('click', () => {
+                    toggleFavorite(truckId, favoriteDetailBtn);
+                });
+            }
+            
+            // 更新收藏按鈕狀態
+            updateFavoriteButtons();
+        }
+
+        // 在用戶登入狀態變化時更新收藏按鈕
+        function updateUIForAuth() {
+            // [原有代碼保持不變]
+            
+            // 添加以下代碼:
+            // 更新收藏按鈕狀態
+            if (currentUser) {
+                updateFavoriteButtons();
+            }
+        }
+
+        // ============ 分享功能 ============
+
+        // 全局變數
+        let currentTruckForShare = null;
+
+        // 分享按鈕點擊事件
+        function setupShareButton() {
+            const shareBtn = document.getElementById('share-truck-btn');
+            if (shareBtn) {
+                shareBtn.addEventListener('click', () => {
+                    openShareModal();
+                });
+            }
+        }
+
+        // 打開分享模態視窗
+        function openShareModal() {
+            document.getElementById('share-modal').style.display = 'block';
+            document.getElementById('share-result').innerHTML = '';
+            
+            // 獲取當前查看的車輛數據
+            const truckId = document.querySelector('.favorite-detail-btn').dataset.id;
+            db.collection('trucks').doc(truckId).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        currentTruckForShare = { id: doc.id, ...doc.data() };
+                    }
+                })
+                .catch(error => {
+                    console.error('獲取車輛分享數據失敗:', error);
+                });
+        }
+
+        // 關閉分享模態視窗
+        document.getElementById('close-share-modal').addEventListener('click', () => {
+            document.getElementById('share-modal').style.display = 'none';
+        });
+
+        // 點擊模態視窗外部關閉
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('share-modal')) {
+                document.getElementById('share-modal').style.display = 'none';
+            }
+        });
+
+        // 複製連結按鈕
+        document.getElementById('copy-link-btn').addEventListener('click', async () => {
+            if (!currentTruckForShare) return;
+            
+            const shareUrl = `${window.location.origin}?truck=${currentTruckForShare.id}`;
+            
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                document.getElementById('share-result').innerHTML = '<p style="color: green;">連結已複製到剪貼簿!</p>';
+            } catch (err) {
+                // 如果瀏覽器不支持 clipboard API，使用傳統方法
+                const textarea = document.createElement('textarea');
+                textarea.value = shareUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                document.getElementById('share-result').innerHTML = '<p style="color: green;">連結已複製到剪貼簿!</p>';
+            }
+        });
+
+        // Line 分享按鈕
+        document.getElementById('share-line-btn').addEventListener('click', () => {
+            if (!currentTruckForShare) return;
+            
+            const shareUrl = `${window.location.origin}?truck=${currentTruckForShare.id}`;
+            const lineShareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`;
+            
+            window.open(lineShareUrl, '_blank');
+        });
+
+        // Facebook 分享按鈕
+        document.getElementById('share-facebook-btn').addEventListener('click', () => {
+            if (!currentTruckForShare) return;
+            
+            const shareUrl = `${window.location.origin}?truck=${currentTruckForShare.id}`;
+            const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+            
+            window.open(fbShareUrl, '_blank');
+        });
+
+        // 產生 PDF 按鈕
+        document.getElementById('generate-pdf-btn').addEventListener('click', () => {
+            document.getElementById('share-result').innerHTML = '<p>PDF 功能即將上線，敬請期待!</p>';
+        });
+
+        // 修改 viewTruckDetail 函數以支持分享功能
+        function viewTruckDetail(truckId) {
+            // [原有代碼保持不變]
+            
+            // 在顯示詳情頁面後，設置分享按鈕
+            setupShareButton();
+        }
+
+        // 處理 URL 參數以支持車輛分享
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const truckId = urlParams.get('truck');
+            
+            if (truckId) {
+                // 從 URL 參數中直接打開車輛詳情
+                viewTruckDetail(truckId);
+            }
+        }
+
+        // 在頁面載入完成後處理 URL 參數
+        document.addEventListener('DOMContentLoaded', () => {
+            // [原有代碼保持不變]
+            
+            // 處理 URL 參數
+            handleUrlParams();
+        });
+
+        // ============ 權限管理系統 ============
+
+        // 用戶角色常量
+        const USER_ROLES = {
+            USER: 'user',
+            MANAGER: 'manager',
+            ADMIN: 'admin'
+        };
+
+        // 當前用戶角色
+        let currentUserRole = USER_ROLES.USER;
+
+        // 修改註冊表單提交函數以包含角色
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            // [原有代碼保持不變...]
+            
+            // 獲取角色
+            const role = document.getElementById('register-role').value;
+            
+            // 在儲存用戶資料時添加角色
+            await db.collection('users').doc(userId).set({
+                email: email,
+                name: name,
+                nickname: nickname,
+                region: region,
+                department: department,
+                employeeId: employeeId,
+                extension: extension,
+                phone: phone,
+                companyEmail: fullCompanyEmail,
+                role: role, // 添加角色
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                truckCount: 0
+            });
+        });
+
+        // 獲取當前用戶角色並更新 UI
+        async function loadUserRole() {
+            if (!currentUser) return;
+            
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    currentUserRole = userData.role || USER_ROLES.USER;
+                    
+                    // 更新 UI 顯示
+                    updateUIForRole();
+                }
+            } catch (error) {
+                console.error('載入用戶角色失敗:', error);
+            }
+        }
+
+        // 根據用戶角色更新 UI
+        function updateUIForRole() {
+            // 獲取管理員面板
+            const adminPanel = document.getElementById('admin-panel');
+            
+            // 如果是管理員，顯示管理控制台入口
+            if (currentUserRole === USER_ROLES.ADMIN) {
+                adminPanel.style.display = 'block';
+            } else {
+                adminPanel.style.display = 'none';
+            }
+            
+            // 根據角色限制某些功能
+            document.querySelectorAll('.manager-only').forEach(el => {
+                el.style.display = (currentUserRole === USER_ROLES.MANAGER || currentUserRole === USER_ROLES.ADMIN) ? 'block' : 'none';
+            });
+            
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = (currentUserRole === USER_ROLES.ADMIN) ? 'block' : 'none';
+            });
+        }
+
+        // 進入管理控制台按鈕點擊事件
+        document.getElementById('admin-console-btn').addEventListener('click', () => {
+            if (currentUserRole !== USER_ROLES.ADMIN) {
+                alert('您沒有管理員權限');
+                return;
+            }
+            showPage('admin-page');
+        });
+
+        // 管理用戶按鈕點擊事件
+        document.getElementById('manage-users-btn').addEventListener('click', () => {
+            openUserManagementModal();
+        });
+
+        // 系統設定按鈕點擊事件
+        document.getElementById('system-settings-btn').addEventListener('click', () => {
+            alert('系統設定功能即將推出，敬請期待！');
+        });
+
+        // 管理類別按鈕點擊事件
+        document.getElementById('manage-categories-btn').addEventListener('click', () => {
+            alert('類別管理功能即將推出，敬請期待！');
+        });
+
+        // 打開用戶管理模態視窗
+        async function openUserManagementModal() {
+            document.getElementById('user-management-modal').style.display = 'block';
+            loadUserList();
+        }
+
+        // 關閉用戶管理模態視窗
+        document.getElementById('close-user-modal').addEventListener('click', () => {
+            document.getElementById('user-management-modal').style.display = 'none';
+        });
+
+        // 載入用戶列表
+        async function loadUserList() {
+            const container = document.getElementById('user-list-container');
+            container.innerHTML = '<p class="text-center">載入中...</p>';
+            
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                
+                if (usersSnapshot.empty) {
+                    container.innerHTML = '<p class="text-center">沒有用戶</p>';
+                    return;
+                }
+                
+                // 創建用戶列表
+                const userList = document.createElement('div');
+                userList.className = 'user-list';
+                
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.dataset.id = doc.id;
+                    
+                    // 獲取角色名稱和樣式
+                    const roleName = getRoleName(user.role || USER_ROLES.USER);
+                    const roleClass = `role-${user.role || 'user'}`;
+                    
+                    userItem.innerHTML = `
+                        <div class="user-info">
+                            <strong>${user.name || '未設定姓名'}</strong>
+                            <span class="role-badge ${roleClass}">${roleName}</span>
+                        </div>
+                        <div>${user.email}</div>
+                        <div>${user.department || '未設定'} - ${user.employeeId || '未設定'}</div>
+                        <div class="user-actions mt-1">
+                            <button class="btn btn-sm edit-user-btn" data-id="${doc.id}">編輯</button>
+                            <button class="btn btn-sm btn-danger delete-user-btn" data-id="${doc.id}">刪除</button>
+                        </div>
+                    `;
+                    
+                    userList.appendChild(userItem);
+                });
+                
+                container.innerHTML = '';
+                container.appendChild(userList);
+                
+                // 添加編輯和刪除按鈕的事件處理
+                setupUserActionButtons();
+                
+            } catch (error) {
+                console.error('載入用戶列表失敗:', error);
+                container.innerHTML = '<p class="text-center">載入失敗，請稍後再試</p>';
+            }
+        }
+
+        // 設置用戶操作按鈕的事件處理
+        function setupUserActionButtons() {
+            // 編輯用戶按鈕
+            document.querySelectorAll('.edit-user-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const userId = e.target.dataset.id;
+                    alert(`編輯用戶功能即將推出，用戶ID: ${userId}`);
+                });
+            });
+            
+            // 刪除用戶按鈕
+            document.querySelectorAll('.delete-user-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const userId = e.target.dataset.id;
+                    
+                    if (confirm('確定要刪除此用戶嗎？此操作無法撤銷。')) {
+                        try {
+                            // 刪除用戶文檔
+                            await db.collection('users').doc(userId).delete();
+                            
+                            // 移除用戶項目
+                            const userItem = document.querySelector(`.user-item[data-id="${userId}"]`);
+                            if (userItem) {
+                                userItem.remove();
+                            }
+                            
+                            alert('用戶已刪除');
+                        } catch (error) {
+                            console.error('刪除用戶失敗:', error);
+                            alert('刪除失敗，請稍後再試');
+                        }
+                    }
+                });
+            });
+        }
+
+        // 獲取角色的顯示名稱
+        function getRoleName(role) {
+            switch (role) {
+                case USER_ROLES.ADMIN:
+                    return '管理員';
+                case USER_ROLES.MANAGER:
+                    return '科長';
+                case USER_ROLES.USER:
+                default:
+                    return '一般業務';
+            }
+        }
+
+        // 修改 updateUIForAuth 函數以加載用戶角色
+        function updateUIForAuth() {
+            // [原有代碼保持不變]
+            
+            // 添加以下代碼:
+            // 加載用戶角色
+            if (currentUser) {
+                loadUserRole();
+            }
+        }
+
+        // 修改 showUserProfile 函數以顯示用戶角色
+        function showUserProfile() {
+            // [原有代碼保持不變，但在用戶資料表格中添加角色行]
+            
+            // 從 Firestore 獲取用戶資料
+            db.collection('users').doc(currentUser.uid).get()
+                .then(doc => {
+                    const userData = doc.exists ? doc.data() : {
+                        name: '未設定',
+                        nickname: '未設定',
+                        employeeId: '未設定',
+                        branch: '未設定',
+                        extension: '未設定',
+                        phone: '未設定',
+                        companyEmail: '未設定',
+                        truckCount: 0,
+                        role: USER_ROLES.USER
+                    };
+                    
+                    // 獲取角色名稱
+                    const roleName = getRoleName(userData.role || USER_ROLES.USER);
+                    
+                    // 填充個人資料頁，包括角色
+                    document.getElementById('user-profile').innerHTML = `
+                        <h3 class="mb-1">個人資訊</h3>
+                        <table style="width: 100%; margin-bottom: 15px;">
+                            <tr>
+                                <td style="width: 40%; font-weight: bold;">姓名</td>
+                                <td>${userData.name || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">暱稱</td>
+                                <td>${userData.nickname || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="width: 40%; font-weight: bold;">電子郵件</td>
+                                <td>${currentUser.email}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">公司信箱</td>
+                                <td>${userData.companyEmail || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">員工編號</td>
+                                <td>${userData.employeeId}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">所屬分公司</td>
+                                <td>${userData.region || '未設定'} - ${userData.department || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">分機號碼</td>
+                                <td>${userData.extension}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">手機號碼</td>
+                                <td>${userData.phone}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">上傳車輛數</td>
+                                <td>${userData.truckCount || 0} 輛</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">用戶角色</td>
+                                <td>${roleName}</td>
+                            </tr>
+                        </table>
+                    `;
+                    
+                    // 更新管理員面板顯示
+                    updateUIForRole();
+                })
+                .catch(error => {
+                    console.error('獲取用戶資料失敗:', error);
+                    document.getElementById('user-profile').innerHTML = `
+                        <p class="text-center">獲取用戶資料失敗，請稍後再試</p>
+                    `;
+                });
+        }
 
     </script>
 </body>
