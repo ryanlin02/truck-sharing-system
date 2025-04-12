@@ -250,20 +250,17 @@
             padding: var(--spacing-md);
         }
         
-        .filter-toggle {
+        .filter-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: pointer;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
         }
-        
-        .filter-toggle h3 {
-            margin-bottom: 0;
-        }
-        
+
         .filter-content {
-            display: none;
-            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            display: block; /* 始終顯示 */
         }
         
         .filter-content.show {
@@ -463,6 +460,21 @@
             padding: var(--spacing-md);
             display: none;
         }
+
+        /* 分頁控制樣式 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .truck-count-display {
+            text-align: center;
+            font-weight: bold;
+            font-size: var(--font-size-md);
+        }
         
         /* 響應式調整 */
         @media (min-width: 768px) {
@@ -520,6 +532,16 @@
         .mt-3 {
             margin-top: var(--spacing-lg);
         }
+
+        /* 搜尋頁面樣式 */
+        .search-form {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
     </style>
 </head>
 <body>
@@ -530,17 +552,12 @@
             <div class="container">
                 <h1>大貨車資訊系統</h1>
                 
-                <!-- 搜尋過濾區塊 -->
+                <!-- 篩選區塊 -->
                 <div class="filter-section">
-                    <div class="filter-toggle" id="filterToggle">
-                        <h3>搜尋與篩選</h3>
-                        <span class="toggle-icon">▼</span>
+                    <div class="filter-header">
+                        <h3>篩選</h3>
                     </div>
-                    <div class="filter-content" id="filterContent">
-                        <!-- 關鍵字搜尋 -->
-                        <div class="form-group mb-2">
-                            <input type="text" id="search-keyword" placeholder="輸入關鍵字搜尋...">
-                        </div>
+                    <div class="filter-content show" id="filterContent">
                         
                         <!-- 條件篩選 -->
                         <div class="filter-row">
@@ -645,9 +662,16 @@
                     <!-- 車輛卡片會透過JavaScript動態生成 -->
                 </div>
                 
-                <!-- 加載指示器 -->
-                <div class="loading" id="loading">
-                    <p>載入更多車輛...</p>
+                <!-- 車輛數量顯示 -->
+                <div class="truck-count-display mb-2 mt-2" id="truck-count">
+                    <p>共有 <span id="total-trucks">0</span> 台車輛銷售中</p>
+                </div>
+
+                <!-- 分頁控制 -->
+                <div class="pagination" id="pagination">
+                    <button id="prev-page" class="btn">上一頁</button>
+                    <span id="page-info">第 <span id="current-page">1</span> 頁，共 <span id="total-pages">1</span> 頁</span>
+                    <button id="next-page" class="btn">下一頁</button>
                 </div>
             </div>
             
@@ -822,6 +846,31 @@
             </div>
         </div>
 
+        <!-- 搜尋頁面 -->
+        <div id="search-page" class="page">
+            <div class="container">
+                <h1>車輛搜尋</h1>
+                
+                <!-- 搜尋表單 -->
+                <div class="search-form mb-3">
+                    <div class="form-group">
+                        <input type="text" id="search-input" placeholder="輸入關鍵字..." class="mb-1">
+                        <button id="search-button" class="btn btn-success btn-block">找車</button>
+                    </div>
+                </div>
+                
+                <!-- 搜尋結果數量顯示 -->
+                <div id="search-result-count" class="mb-2" style="display: none;">
+                    找到 <span id="result-count">0</span> 台符合的車輛
+                </div>
+                
+                <!-- 搜尋結果列表 -->
+                <div class="card-list" id="search-results">
+                    <!-- 搜尋結果將在這裡顯示 -->
+                </div>
+            </div>
+        </div>
+
         <!-- 導航欄 -->
         <div class="navbar">
             <a href="#" class="nav-item active" data-page="home-page">
@@ -882,6 +931,12 @@
         let activeFilters = {}; // 活動篩選條件
         let editingImages = []; // 編輯時的圖片列表
         let truckImages = []; // 上傳的圖片檔案列表
+
+        // 添加分頁相關變數
+        let currentPage = 1;
+        let totalPages = 1;
+        let trucksPerPage = 20;
+        let allTrucks = []; // 存儲所有加載的車輛
         
         // ============ 頁面導航功能 ============
         
@@ -919,14 +974,92 @@
         // 搜尋按鈕點擊處理
         document.getElementById('search-nav-btn').addEventListener('click', function(e) {
             e.preventDefault();
-            showPage('home-page');
-            // 顯示搜尋與篩選面板
-            const filterContent = document.getElementById('filterContent');
-            const filterToggle = document.getElementById('filterToggle');
-            filterContent.classList.add('show');
-            filterToggle.querySelector('.toggle-icon').textContent = '▲';
-            // 讓頁面滾動到搜尋區域
-            document.querySelector('.filter-section').scrollIntoView({ behavior: 'smooth' });
+            showPage('search-page');
+            // 清空搜尋結果
+            document.getElementById('search-results').innerHTML = '';
+            document.getElementById('search-result-count').style.display = 'none';
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-input').focus();
+        });
+
+        // 搜尋功能
+        document.getElementById('search-button').addEventListener('click', async function() {
+            const keyword = document.getElementById('search-input').value.trim();
+            
+            if (!keyword) {
+                alert('請輸入搜尋關鍵字');
+                return;
+            }
+            
+            try {
+                // 顯示加載中
+                document.getElementById('search-results').innerHTML = '<p class="text-center">搜尋中...</p>';
+                
+                // 從資料庫獲取所有車輛
+                const querySnapshot = await db.collection('trucks').get();
+                const allTrucks = querySnapshot.docs.map(doc => {
+                    return { id: doc.id, ...doc.data() };
+                });
+                
+                // 在前端進行關鍵字過濾
+                const results = allTrucks.filter(truck => {
+                    const searchText = (
+                        (truck.brand || '') + ' ' +
+                        (truck.model || '') + ' ' +
+                        (truck.description || '') + ' ' +
+                        (truck.sellerName || '')
+                    ).toLowerCase();
+                    
+                    return searchText.includes(keyword.toLowerCase());
+                });
+                
+                // 顯示結果數量
+                document.getElementById('result-count').textContent = results.length;
+                document.getElementById('search-result-count').style.display = 'block';
+                
+                // 清空並顯示結果
+                const searchResults = document.getElementById('search-results');
+                searchResults.innerHTML = '';
+                
+                if (results.length === 0) {
+                    searchResults.innerHTML = '<p class="text-center">沒有找到符合的車輛</p>';
+                } else {
+                    // 渲染車輛卡片
+                    results.forEach(truck => {
+                        searchResults.appendChild(createTruckCard(truck));
+                    });
+                }
+                
+            } catch (error) {
+                console.error('搜尋失敗:', error);
+                document.getElementById('search-results').innerHTML = '<p class="text-center">搜尋失敗，請稍後再試</p>';
+            }
+        });
+
+        // 搜尋輸入框按 Enter 鍵也觸發搜尋
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('search-button').click();
+            }
+        });
+
+        // 分頁按鈕事件處理
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                loadTrucks();
+                // 滾動到頁面頂部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadTrucks();
+                // 滾動到頁面頂部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
 
         // 討論按鈕點擊處理
@@ -942,7 +1075,6 @@
             if (isLoadingMore) return;
             
             isLoadingMore = true;
-            loadingIndicator.style.display = 'block';
             
             try {
                 // 創建基礎查詢
@@ -961,11 +1093,11 @@
                     query = query.where('type', '==', activeFilters.type);
                 }
 
-                // 暫存查詢結果，用於後續本地篩選
+                // 獲取所有符合條件的文檔
                 let querySnapshot = await query.get();
                 let filteredDocs = querySnapshot.docs;
 
-                // 對於 Firestore 不支援的複合查詢，我們在前端進行篩選
+                // 對於 Firestore 不支援的複合查詢，在前端進行篩選
                 if (activeFilters.priceMin || activeFilters.priceMax || 
                     activeFilters.yearMin || activeFilters.yearMax || 
                     activeFilters.weight || activeFilters.length || 
@@ -1005,36 +1137,57 @@
                     });
                 }
 
-                // 清空列表 (如果是初始載入)
+                // 存儲所有符合條件的車輛
+                allTrucks = filteredDocs.map(doc => {
+                    return { id: doc.id, ...doc.data() };
+                });
+                
+                // 計算總頁數
+                totalPages = Math.ceil(allTrucks.length / trucksPerPage);
+                if (totalPages === 0) totalPages = 1;
+                
+                // 如果是初始加載或重新篩選，重置為第一頁
                 if (isInitialLoad) {
-                    truckList.innerHTML = '';
+                    currentPage = 1;
                 }
+                
+                // 確保頁碼在有效範圍內
+                if (currentPage > totalPages) {
+                    currentPage = totalPages;
+                }
+                
+                // 更新頁面信息顯示
+                document.getElementById('current-page').textContent = currentPage;
+                document.getElementById('total-pages').textContent = totalPages;
+                document.getElementById('total-trucks').textContent = allTrucks.length;
+                
+                // 計算當前頁的車輛
+                const startIndex = (currentPage - 1) * trucksPerPage;
+                const endIndex = Math.min(startIndex + trucksPerPage, allTrucks.length);
+                const currentPageTrucks = allTrucks.slice(startIndex, endIndex);
+
+                // 清空列表
+                truckList.innerHTML = '';
 
                 // 檢查是否有符合條件的車輛
-                if (filteredDocs.length === 0 && isInitialLoad) {
+                if (currentPageTrucks.length === 0) {
                     truckList.innerHTML = '<p class="text-center">沒有符合條件的車輛</p>';
-                    loadingIndicator.style.display = 'none';
-                    isLoadingMore = false;
-                    return;
+                } else {
+                    // 渲染車輛卡片
+                    currentPageTrucks.forEach(truck => {
+                        truckList.appendChild(createTruckCard(truck));
+                    });
                 }
-
-                // 更新最後可見文檔
-                if (filteredDocs.length > 0) {
-                    lastVisibleTruck = filteredDocs[filteredDocs.length - 1];
-                }
-
-                // 渲染車輛卡片
-                filteredDocs.forEach(doc => {
-                    const truck = { id: doc.id, ...doc.data() };
-                    truckList.appendChild(createTruckCard(truck));
-                });
+                
+                // 更新分頁按鈕狀態
+                document.getElementById('prev-page').disabled = currentPage <= 1;
+                document.getElementById('next-page').disabled = currentPage >= totalPages;
                 
             } catch (error) {
                 console.error('載入車輛失敗:', error);
                 alert('載入車輛失敗，請稍後再試');
             } finally {
                 isLoadingMore = false;
-                loadingIndicator.style.display = 'none';
             }
         }
         
@@ -1111,18 +1264,10 @@
             return card;
         }
         
-        // 篩選條件切換
-        filterToggle.addEventListener('click', () => {
-            filterContent.classList.toggle('show');
-            filterToggle.querySelector('.toggle-icon').textContent = 
-                filterContent.classList.contains('show') ? '▲' : '▼';
-        });
-        
         // 應用篩選條件
         document.getElementById('apply-filter').addEventListener('click', () => {
-            // 收集所有篩選條件
+            // 收集所有篩選條件（移除 keyword）
             activeFilters = {
-                keyword: document.getElementById('search-keyword').value,
                 brand: document.getElementById('brand-filter').value,
                 type: document.getElementById('type-filter').value,
                 priceMin: document.getElementById('price-min').value,
@@ -1135,26 +1280,8 @@
                 sortBy: document.getElementById('sort-by').value
             };
             
-            // 重置分頁狀態
-            lastVisibleTruck = null;
-            
             // 載入篩選後的結果
             loadTrucks(true);
-            
-            // 收起篩選面板
-            filterContent.classList.remove('show');
-            filterToggle.querySelector('.toggle-icon').textContent = '▼';
-        });
-        
-        // 無限滾動載入
-        window.addEventListener('scroll', () => {
-            if (homePage.classList.contains('active')) {
-                const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-                
-                if (scrollTop + clientHeight >= scrollHeight - 100 && !isLoadingMore) {
-                    loadTrucks();
-                }
-            }
         });
         
         // ============ 車輛詳情功能 ============
@@ -1706,48 +1833,7 @@
             // 初始化 UI
             updateUIForAuth();
             
-            // 添加測試車輛按鈕（僅用於測試）
-            const testBtn = document.createElement('button');
-            testBtn.textContent = '添加測試車輛';
-            testBtn.className = 'btn btn-success';
-            testBtn.style.position = 'fixed';
-            testBtn.style.bottom = '130px';
-            testBtn.style.right = '20px';
-            testBtn.addEventListener('click', addTestTruck);
-            document.body.appendChild(testBtn);
         });
-
-        // 添加測試車輛數據
-        async function addTestTruck() {
-            try {
-                const testTruck = {
-                    brand: 'fuso',
-                    model: 'Super Great',
-                    type: 'cargo',
-                    price: 150,
-                    year: 2018,
-                    weight: 15,
-                    length: 24,
-                    engine: '400匹/12000cc',
-                    condition: 'good',
-                    status: 'available',
-                    description: '車況良好，輪胎新更換，引擎保養完善。',
-                    sellerName: '王小明',
-                    sellerContact: '0912-345-678',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    views: 0,
-                    images: []
-                };
-                
-                await db.collection('trucks').add(testTruck);
-                alert('測試車輛已添加');
-                loadTrucks(true);
-            } catch (error) {
-                console.error('添加測試車輛失敗:', error);
-                alert('添加測試車輛失敗: ' + error.message);
-            }
-        }
 
         // 業務按鈕點擊處理
         document.getElementById('profile-nav-btn').addEventListener('click', function(e) {
