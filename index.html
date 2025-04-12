@@ -565,13 +565,18 @@
                                 <label for="brand-filter">廠牌</label>
                                 <select id="brand-filter">
                                     <option value="">所有廠牌</option>
-                                    <option value="isuzu">五十鈴</option>
-                                    <option value="hino">日野</option>
-                                    <option value="fuso">三菱扶桑</option>
-                                    <option value="volvo">富豪</option>
-                                    <option value="scania">斯堪尼亞</option>
-                                    <option value="mercedes">賓士</option>
-                                    <option value="man">曼恩</option>
+                                    <option value="isuzu">五十鈴 ISUZU</option>
+                                    <option value="hino">日野 HINO</option>
+                                    <option value="fuso">三菱扶桑 FUSO</option>
+                                    <option value="volvo">富豪 VOLVO</option>
+                                    <option value="scania">斯堪尼亞 SCANIA</option>
+                                    <option value="mercedes">賓士 MERCEDES</option>
+                                    <option value="man">曼恩 MAN</option>
+                                    <option value="daf">達富 DAF</option>
+                                    <option value="iveco">依維柯 IVECO</option>
+                                    <option value="sitrak">賽德卡 SITRAK</option>
+                                    <option value="ud">優迪 UD</option>
+                                    <option value="other">其他 OTHER</option>
                                 </select>
                             </div>
                             <div class="filter-group">
@@ -580,10 +585,15 @@
                                     <option value="">所有車型</option>
                                     <option value="flatbed">平板車</option>
                                     <option value="dump">砂石車</option>
-                                    <option value="cargo">貨櫃車</option>
+                                    <option value="tanker">罐槽車</option>
                                     <option value="refrigerated">冷凍車</option>
-                                    <option value="tanker">槽車</option>
-                                    <option value="crane">吊車</option>
+                                    <option value="tractor">曳引車</option>
+                                    <option value="crane">吊桿車</option>
+                                    <option value="cargo">貨櫃車</option>
+                                    <option value="box">框式車</option>
+                                    <option value="concrete">混凝土預拌車</option>
+                                    <option value="water">灑水車</option>
+                                    <option value="other">其他</option>
                                 </select>
                             </div>
                         </div>
@@ -700,33 +710,54 @@
                         <label for="truck-brand">廠牌</label>
                         <select id="truck-brand" required>
                             <option value="">選擇廠牌</option>
-                            <option value="isuzu">五十鈴</option>
-                            <option value="hino">日野</option>
-                            <option value="fuso">三菱扶桑</option>
-                            <option value="volvo">富豪</option>
-                            <option value="scania">斯堪尼亞</option>
-                            <option value="mercedes">賓士</option>
-                            <option value="man">曼恩</option>
-                            <option value="other">其他</option>
+                            <option value="isuzu">五十鈴 ISUZU</option>
+                            <option value="hino">日野 HINO</option>
+                            <option value="fuso">三菱扶桑 FUSO</option>
+                            <option value="volvo">富豪 VOLVO</option>
+                            <option value="scania">斯堪尼亞 SCANIA</option>
+                            <option value="mercedes">賓士 MERCEDES</option>
+                            <option value="man">曼恩 MAN</option>
+                            <option value="daf">達富 DAF</option>
+                            <option value="iveco">依維柯 IVECO</option>
+                            <option value="sitrak">賽德卡 SITRAK</option>
+                            <option value="ud">優迪 UD</option>
+                            <option value="other">其他 OTHER</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label for="truck-model">車型名稱</label>
-                        <input type="text" id="truck-model" required placeholder="例：FUSO SUPER GREAT">
+                        <input type="text" id="truck-model" required placeholder="例：Volvo FH">
                     </div>
                     
                     <div class="form-group">
-                        <label for="truck-type">車型分類</label>
-                        <select id="truck-type" required>
-                            <option value="">選擇車型</option>
-                            <option value="flatbed">平板車</option>
-                            <option value="dump">砂石車</option>
-                            <option value="cargo">貨櫃車</option>
-                            <option value="refrigerated">冷凍車</option>
-                            <option value="tanker">槽車</option>
-                            <option value="crane">吊車</option>
-                            <option value="other">其他</option>
+                        <div class="form-group">
+                            <label for="truck-type">車型分類</label>
+                            <select id="truck-type" required>
+                                <option value="">選擇車型</option>
+                                <option value="flatbed">平板車</option>
+                                <option value="dump">砂石車</option>
+                                <option value="tanker">罐槽車</option>
+                                <option value="refrigerated">冷凍車</option>
+                                <option value="tractor">曳引車</option>
+                                <option value="crane">吊桿車</option>
+                                <option value="cargo">貨櫃車</option>
+                                <option value="box">框式車</option>
+                                <option value="concrete">混凝土預拌車</option>
+                                <option value="water">灑水車</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tailgate-lift">加裝尾門</label>
+                        <select id="tailgate-lift" required>
+                            <option value="none" selected>無尾門</option>
+                            <option value="folding">折疊尾門</option>
+                            <option value="flipup">掀起式尾門</option>
+                            <option value="slide">滑入式尾門</option>
+                            <option value="column">柱式尾門</option>
                         </select>
                     </div>
                     
@@ -737,7 +768,23 @@
                     
                     <div class="form-group">
                         <label for="truck-year">出廠年份</label>
-                        <input type="number" id="truck-year" required min="1980" max="2030">
+                        <select id="truck-year" required>
+                            <option value="">選擇年份</option>
+                            <!-- 年份選項將由JavaScript生成 -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="emission-phase">環保期數(Phase)</label>
+                        <select id="emission-phase" required>
+                            <option value="">選擇環保期數</option>
+                            <option value="phase1">一期 1993年前</option>
+                            <option value="phase2">二期 1993~1999</option>
+                            <option value="phase3">三期 1999~2006</option>
+                            <option value="phase4">四期 2006~2012</option>
+                            <option value="phase5">五期 2013~2021</option>
+                            <option value="phase6">六期 2021年後</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">
@@ -1263,6 +1310,31 @@
             
             return card;
         }
+
+        // 獲取尾門類型的顯示名稱
+        function getTailgateLiftName(value) {
+            const tailgateLiftNames = {
+                'none': '無尾門',
+                'folding': '折疊尾門',
+                'flipup': '掀起式尾門',
+                'slide': '滑入式尾門',
+                'column': '柱式尾門'
+            };
+            return tailgateLiftNames[value] || value;
+        }
+
+        // 獲取環保期數的顯示名稱
+        function getEmissionPhaseName(value) {
+            const emissionPhaseNames = {
+                'phase1': '一期 1993年前',
+                'phase2': '二期 1993~1999',
+                'phase3': '三期 1999~2006',
+                'phase4': '四期 2006~2012',
+                'phase5': '五期 2013~2021',
+                'phase6': '六期 2021年後'
+            };
+            return emissionPhaseNames[value] || value;
+        }
         
         // 應用篩選條件
         document.getElementById('apply-filter').addEventListener('click', () => {
@@ -1306,24 +1378,32 @@
                 
                 // 品牌中文名稱對照
                 const brandNames = {
-                    'isuzu': '五十鈴',
-                    'hino': '日野',
-                    'fuso': '三菱扶桑',
-                    'volvo': '富豪',
-                    'scania': '斯堪尼亞',
-                    'mercedes': '賓士',
-                    'man': '曼恩',
-                    'other': '其他'
+                    'isuzu': '五十鈴 ISUZU',
+                    'hino': '日野 HINO',
+                    'fuso': '三菱扶桑 FUSO',
+                    'volvo': '富豪 VOLVO',
+                    'scania': '斯堪尼亞 SCANIA',
+                    'mercedes': '賓士 MERCEDES',
+                    'man': '曼恩 MAN',
+                    'daf': '達富 DAF',
+                    'iveco': '依維柯 IVECO',
+                    'sitrak': '賽德卡 SITRAK',
+                    'ud': '優迪 UD',
+                    'other': '其他 OTHER'
                 };
-                
+
                 // 車型中文名稱對照
                 const typeNames = {
                     'flatbed': '平板車',
                     'dump': '砂石車',
-                    'cargo': '貨櫃車',
+                    'tanker': '罐槽車',
                     'refrigerated': '冷凍車',
-                    'tanker': '槽車',
-                    'crane': '吊車',
+                    'tractor': '曳引車',
+                    'crane': '吊桿車',
+                    'cargo': '貨櫃車',
+                    'box': '框式車',
+                    'concrete': '混凝土預拌車',
+                    'water': '灑水車',
                     'other': '其他'
                 };
                 
@@ -1395,6 +1475,14 @@
                                 <tr>
                                     <td style="font-weight: bold;">車型分類</td>
                                     <td>${typeNames[truck.type] || truck.type}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">加裝尾門</td>
+                                    <td>${getTailgateLiftName(truck.tailgateLift) || '無'}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">環保期數</td>
+                                    <td>${getEmissionPhaseName(truck.emissionPhase) || '未提供'}</td>
                                 </tr>
                                 <tr>
                                     <td style="font-weight: bold;">載重噸數</td>
@@ -1675,8 +1763,10 @@
                     brand: document.getElementById('truck-brand').value,
                     model: document.getElementById('truck-model').value,
                     type: document.getElementById('truck-type').value,
+                    tailgateLift: document.getElementById('tailgate-lift').value,
                     price: parseFloat(document.getElementById('truck-price').value),
                     year: parseInt(document.getElementById('truck-year').value),
+                    emissionPhase: document.getElementById('emission-phase').value,
                     weight: parseFloat(document.getElementById('truck-weight').value),
                     length: parseFloat(document.getElementById('truck-length').value),
                     engine: document.getElementById('truck-engine').value,
@@ -1832,6 +1922,18 @@
             
             // 初始化 UI
             updateUIForAuth();
+
+            // 生成年份選項
+            const yearSelect = document.getElementById('truck-year');
+            if (yearSelect) {
+                const currentYear = new Date().getFullYear();
+                for (let year = currentYear; year >= 1985; year--) {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
+                }
+            }
             
         });
 
