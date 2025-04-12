@@ -280,7 +280,6 @@
             flex: 1;
         }
         
-        /* 導航欄 */
         .navbar {
             position: fixed;
             bottom: 0;
@@ -290,14 +289,14 @@
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-around;
-            padding: var(--spacing-xs) 0;
+            padding: 8px 0; /* 降低高度 */
             z-index: 1000;
         }
-        
+
         .nav-item {
             text-align: center;
             flex: 1;
-            padding: var(--spacing-xs);
+            padding: 4px; /* 減少內邊距 */
             color: var(--secondary-color);
             text-decoration: none;
             font-size: var(--font-size-sm);
@@ -305,11 +304,6 @@
         
         .nav-item.active {
             color: var(--primary-color);
-        }
-        
-        .nav-icon {
-            font-size: 1.5rem;
-            margin-bottom: 2px;
         }
         
         /* 模態視窗 */
@@ -811,19 +805,36 @@
             </div>
         </div>
 
+        <!-- 業務個人資料頁面 -->
+        <div id="profile-page" class="page">
+            <div class="container">
+                <h1 class="mb-3">業務資料</h1>
+                <div class="card">
+                    <div class="card-content">
+                        <div id="user-profile">
+                            <!-- 用戶資料會動態生成 -->
+                        </div>
+                        <div class="form-group mt-2">
+                            <button type="button" class="btn btn-danger btn-block" id="logout-btn">登出帳號</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 導航欄 -->
         <div class="navbar">
             <a href="#" class="nav-item active" data-page="home-page">
-                <div class="nav-icon">🏠</div>
-                <div>首頁</div>
+                <div>銷售中</div>
             </a>
             <a href="#" class="nav-item" id="search-nav-btn">
-                <div class="nav-icon">🔍</div>
                 <div>搜尋</div>
             </a>
-            <a href="#" class="nav-item" data-page="login-page">
-                <div class="nav-icon">👤</div>
-                <div>登入</div>
+            <a href="#" class="nav-item" id="discussion-nav-btn">
+                <div>討論</div>
+            </a>
+            <a href="#" class="nav-item" data-page="login-page" id="profile-nav-btn">
+                <div>業務</div>
             </a>
         </div>
     </div>
@@ -916,6 +927,12 @@
             filterToggle.querySelector('.toggle-icon').textContent = '▲';
             // 讓頁面滾動到搜尋區域
             document.querySelector('.filter-section').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // 討論按鈕點擊處理
+        document.getElementById('discussion-nav-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('討論功能即將推出，敬請期待！');
         });
         
         // ============ 車輛列表功能 ============
@@ -1613,6 +1630,9 @@
                 document.querySelectorAll('.non-auth').forEach(el => {
                     el.style.display = 'none';
                 });
+                
+                // 更新導覽列
+                document.getElementById('profile-nav-btn').querySelector('div').textContent = '個人';
             } else {
                 // 用戶未登入
                 document.querySelectorAll('.auth-only').forEach(el => {
@@ -1621,6 +1641,9 @@
                 document.querySelectorAll('.non-auth').forEach(el => {
                     el.style.display = 'block';
                 });
+                
+                // 更新導覽列
+                document.getElementById('profile-nav-btn').querySelector('div').textContent = '業務';
             }
         }
         
@@ -1725,6 +1748,87 @@
                 alert('添加測試車輛失敗: ' + error.message);
             }
         }
+
+        // 業務按鈕點擊處理
+        document.getElementById('profile-nav-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (currentUser) {
+                // 已登入則顯示個人資料頁面
+                showUserProfile();
+                showPage('profile-page');
+            } else {
+                // 未登入則顯示登入頁面
+                showPage('login-page');
+            }
+        });
+
+        // 顯示用戶個人資料
+        function showUserProfile() {
+            // 檢查用戶是否登入
+            if (!currentUser) return;
+            
+            // 從 Firestore 獲取用戶資料
+            db.collection('users').doc(currentUser.uid).get()
+                .then(doc => {
+                    const userData = doc.exists ? doc.data() : {
+                        employeeId: '未設定',
+                        branch: '未設定',
+                        extension: '未設定',
+                        phone: '未設定',
+                        truckCount: 0
+                    };
+                    
+                    // 填充個人資料頁
+                    document.getElementById('user-profile').innerHTML = `
+                        <h3 class="mb-1">個人資訊</h3>
+                        <table style="width: 100%; margin-bottom: 15px;">
+                            <tr>
+                                <td style="width: 40%; font-weight: bold;">電子郵件</td>
+                                <td>${currentUser.email}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">員工編號</td>
+                                <td>${userData.employeeId}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">所屬分公司</td>
+                                <td>${userData.branch}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">分機號碼</td>
+                                <td>${userData.extension}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">手機號碼</td>
+                                <td>${userData.phone}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">上傳車輛數</td>
+                                <td>${userData.truckCount || 0} 輛</td>
+                            </tr>
+                        </table>
+                    `;
+                })
+                .catch(error => {
+                    console.error('獲取用戶資料失敗:', error);
+                    document.getElementById('user-profile').innerHTML = `
+                        <p class="text-center">獲取用戶資料失敗，請稍後再試</p>
+                    `;
+                });
+        }
+
+        // 登出功能
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                alert('已成功登出');
+                showPage('home-page');
+            } catch (error) {
+                console.error('登出失敗:', error);
+                alert('登出失敗: ' + error.message);
+            }
+        });
+
     </script>
 </body>
 </html>
