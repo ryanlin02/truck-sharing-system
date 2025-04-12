@@ -906,6 +906,11 @@
                             <option value="">請先選擇地區</option>
                         </select>
                     </div>
+
+                    <div class="form-group">
+                        <label for="register-name">業務姓名</label>
+                        <input type="text" id="register-name" required>
+                    </div>
                     
                     <div class="form-group">
                         <label for="register-employee-id">員工編號</label>
@@ -946,16 +951,83 @@
         <div id="profile-page" class="page">
             <div class="container">
                 <h1 class="mb-3">業務資料</h1>
-                <div class="card">
+                <!-- 原有的個人資料卡片 -->
+                <div class="card mb-3">
                     <div class="card-content">
                         <div id="user-profile">
                             <!-- 用戶資料會動態生成 -->
                         </div>
+                        
+                        <!-- 新增編輯按鈕 -->
+                        <div class="form-group mt-2">
+                            <button type="button" class="btn btn-block" id="edit-profile-btn">編輯個人資料</button>
+                        </div>
+                        
                         <div class="form-group mt-2">
                             <button type="button" class="btn btn-danger btn-block" id="logout-btn">登出帳號</button>
                         </div>
                     </div>
                 </div>
+                
+                <!-- 新增銷售統計卡片 -->
+                <div class="card">
+                    <div class="card-content">
+                        <h3 class="mb-1">銷售統計</h3>
+                        <div id="sales-stats">
+                            <p class="text-center">載入中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 新增編輯個人資料頁面 -->
+        <div id="edit-profile-page" class="page">
+            <div class="container">
+                <h1 class="mb-3">編輯個人資料</h1>
+                <form id="edit-profile-form">
+
+                    <!-- 新增頭像上傳區域 -->
+                    <div class="form-group text-center">
+                        <div style="margin-bottom: 10px;">
+                            <img id="profile-avatar-preview" src="/api/placeholder/100/100" alt="頭像" 
+                                style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <label for="profile-avatar" class="btn">更換頭像</label>
+                        <input type="file" id="profile-avatar" accept="image/*" style="display: none;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-name">業務姓名</label>
+                        <input type="text" id="edit-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-phone">個人手機</label>
+                        <input type="tel" id="edit-phone" pattern="[0-9]*" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-extension">公司分機</label>
+                        <input type="tel" id="edit-extension" pattern="[0-9]*" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="edit-company-email">公司信箱</label>
+                        <div style="display: flex;">
+                            <input type="text" id="edit-company-email" placeholder="username" style="flex: 1;">
+                            <span style="padding: 8px 0; align-self: center;">@chailease.com.tw</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block">儲存變更</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="button" class="btn btn-block" id="cancel-edit-profile">取消</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -993,6 +1065,7 @@
                 </div>
                 <div class="modal-body">
                     <p>請輸入您註冊時使用的電子郵件地址，我們將發送重設密碼的連結。</p>
+                    <p class="mb-2">重設連結將在24小時內有效，請及時查收並點擊郵件中的連結設定新密碼。</p>
                     <div class="form-group">
                         <label for="reset-email">電子郵件</label>
                         <input type="email" id="reset-email" required>
@@ -1253,7 +1326,7 @@
                 if (activeFilters.priceMin || activeFilters.priceMax || 
                     activeFilters.yearMin || activeFilters.yearMax || 
                     activeFilters.weight || activeFilters.length || 
-                    activeFilters.keyword) {
+                    activeFilters.keyword || activeFilters.sellerEmail) {
                     
                     filteredDocs = filteredDocs.filter(doc => {
                         const data = doc.data();
@@ -1284,6 +1357,9 @@
                             
                             if (!searchText.includes(keyword)) return false;
                         }
+
+                        // 按業務郵箱篩選
+                        if (activeFilters.sellerEmail && data.sellerEmail !== activeFilters.sellerEmail) return false;
                         
                         return true;
                     });
@@ -2040,14 +2116,26 @@
                 resetMessage.innerHTML = '<p>處理中，請稍候...</p>';
                 sendResetBtn.disabled = true;
                 
+                // 檢查電子郵件是否存在
+                const methods = await firebase.auth().fetchSignInMethodsForEmail(email);
+                
+                if (methods.length === 0) {
+                    resetMessage.innerHTML = '<p style="color: red;">此電子郵件尚未註冊</p>';
+                    sendResetBtn.disabled = false;
+                    return;
+                }
+                
                 // 使用 Firebase Auth 發送重設密碼郵件
-                await auth.sendPasswordResetEmail(email);
+                await auth.sendPasswordResetEmail(email, {
+                    url: window.location.origin, // 重設密碼後返回當前網站
+                    handleCodeInApp: false // 在瀏覽器中處理
+                });
                 
                 // 成功發送
-                resetMessage.innerHTML = '<p style="color: green;">重設密碼連結已發送到您的電子郵件。請檢查您的收件匣。</p>';
+                resetMessage.innerHTML = '<p style="color: green;">重設密碼連結已發送到您的電子郵件。請檢查您的收件匣或垃圾郵件資料夾。</p>';
                 setTimeout(() => {
                     forgotPasswordModal.style.display = 'none';
-                }, 3000);
+                }, 5000); // 5秒後自動關閉
                 
             } catch (error) {
                 console.error('發送重設密碼郵件失敗:', error);
@@ -2055,6 +2143,10 @@
                 // 根據錯誤碼顯示相應訊息
                 if (error.code === 'auth/user-not-found') {
                     resetMessage.innerHTML = '<p style="color: red;">此電子郵件尚未註冊</p>';
+                } else if (error.code === 'auth/invalid-email') {
+                    resetMessage.innerHTML = '<p style="color: red;">無效的電子郵件格式</p>';
+                } else if (error.code === 'auth/too-many-requests') {
+                    resetMessage.innerHTML = '<p style="color: red;">請求次數過多，請稍後再試</p>';
                 } else {
                     resetMessage.innerHTML = `<p style="color: red;">發送失敗: ${error.message}</p>`;
                 }
@@ -2123,6 +2215,7 @@
             e.preventDefault();
             
             const email = document.getElementById('register-email').value;
+            const name = document.getElementById('register-name').value; // 新增這行
             const region = document.getElementById('register-region').value;
             const department = document.getElementById('register-department').value;
             const employeeId = document.getElementById('register-employee-id').value;
@@ -2171,6 +2264,7 @@
                 // 儲存用戶資料到 Firestore
                 await db.collection('users').doc(userId).set({
                     email: email,
+                    name: name, // 新增這行
                     region: region,
                     department: department,
                     employeeId: employeeId,
@@ -2310,8 +2404,9 @@
             db.collection('users').doc(currentUser.uid).get()
                 .then(doc => {
                     const userData = doc.exists ? doc.data() : {
+                        name: '未設定',
                         employeeId: '未設定',
-                        branch: '未設定',
+                        department: '未設定',
                         extension: '未設定',
                         phone: '未設定',
                         truckCount: 0
@@ -2319,7 +2414,11 @@
                     
                     // 填充個人資料頁
                     document.getElementById('user-profile').innerHTML = `
-                        <h3 class="mb-1">個人資訊</h3>
+                        <div class="text-center mb-2">
+                            <img src="${userData.avatarUrl || '/api/placeholder/100/100'}" alt="頭像" 
+                                style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <h3 class="mb-1 text-center">${userData.name || '未設定姓名'}</h3>
                         <table style="width: 100%; margin-bottom: 15px;">
                             <tr>
                                 <td style="width: 40%; font-weight: bold;">電子郵件</td>
@@ -2331,7 +2430,11 @@
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">所屬分公司</td>
-                                <td>${userData.branch}</td>
+                                <td>${userData.region || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">所屬科別</td>
+                                <td>${userData.department || '未設定'}</td>
                             </tr>
                             <tr>
                                 <td style="font-weight: bold;">分機號碼</td>
@@ -2347,12 +2450,106 @@
                             </tr>
                         </table>
                     `;
+                    
+                    // 顯示銷售統計
+                    showUserSalesStats();
                 })
                 .catch(error => {
                     console.error('獲取用戶資料失敗:', error);
                     document.getElementById('user-profile').innerHTML = `
                         <p class="text-center">獲取用戶資料失敗，請稍後再試</p>
                     `;
+                });
+        }
+
+        // 顯示用戶銷售統計
+        function showUserSalesStats() {
+            // 檢查用戶是否登入
+            if (!currentUser) return;
+            
+            const statsContainer = document.getElementById('sales-stats');
+            statsContainer.innerHTML = '<p class="text-center">載入中...</p>';
+            
+            // 獲取該業務的車輛資料
+            db.collection('trucks')
+                .where('sellerName', '==', currentUser.email) // 假設使用郵箱識別業務
+                .get()
+                .then(querySnapshot => {
+                    // 初始化統計資料
+                    const stats = {
+                        total: querySnapshot.size,
+                        available: 0,
+                        pending: 0,
+                        sold: 0,
+                        totalViews: 0
+                    };
+                    
+                    // 計算各種狀態的車輛數量
+                    querySnapshot.forEach(doc => {
+                        const truck = doc.data();
+                        stats.totalViews += truck.views || 0;
+                        
+                        switch(truck.status) {
+                            case 'available':
+                                stats.available++;
+                                break;
+                            case 'pending':
+                                stats.pending++;
+                                break;
+                            case 'sold':
+                                stats.sold++;
+                                break;
+                        }
+                    });
+                    
+                    // 渲染統計資料
+                    statsContainer.innerHTML = `
+                        <table style="width: 100%;">
+                            <tr>
+                                <td style="width: 50%; font-weight: bold;">刊登車輛總數</td>
+                                <td>${stats.total} 輛</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">可售車輛</td>
+                                <td>${stats.available} 輛</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">洽談中車輛</td>
+                                <td>${stats.pending} 輛</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">已售出車輛</td>
+                                <td>${stats.sold} 輛</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold;">累計瀏覽次數</td>
+                                <td>${stats.totalViews} 次</td>
+                            </tr>
+                        </table>
+                        
+                        <div class="mt-2">
+                            <button class="btn btn-block" id="view-my-trucks-btn">查看我的車輛</button>
+                        </div>
+                    `;
+                    
+                    // 添加查看我的車輛按鈕事件
+                    document.getElementById('view-my-trucks-btn').addEventListener('click', function() {
+                        // 設置篩選條件為當前用戶的車輛
+                        activeFilters = {
+                            sellerEmail: currentUser.email,
+                            status: 'all'
+                        };
+                        
+                        // 載入篩選後的車輛列表
+                        loadTrucks(true);
+                        
+                        // 顯示首頁
+                        showPage('home-page');
+                    });
+                })
+                .catch(error => {
+                    console.error('獲取銷售統計失敗:', error);
+                    statsContainer.innerHTML = '<p class="text-center">獲取銷售統計失敗，請稍後再試</p>';
                 });
         }
 
@@ -2365,6 +2562,126 @@
             } catch (error) {
                 console.error('登出失敗:', error);
                 alert('登出失敗: ' + error.message);
+            }
+        });
+
+        // 頭像上傳預覽
+        document.getElementById('profile-avatar').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    document.getElementById('profile-avatar-preview').src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 修改編輯個人資料按鈕點擊事件
+        document.getElementById('edit-profile-btn').addEventListener('click', function() {
+            // 獲取當前用戶資料
+            db.collection('users').doc(currentUser.uid).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        // 填充編輯表單
+                        document.getElementById('edit-name').value = userData.name || '';
+                        document.getElementById('edit-phone').value = userData.phone || '';
+                        document.getElementById('edit-extension').value = userData.extension || '';
+                        
+                        // 顯示頭像
+                        if (userData.avatarUrl) {
+                            document.getElementById('profile-avatar-preview').src = userData.avatarUrl;
+                        } else {
+                            document.getElementById('profile-avatar-preview').src = '/api/placeholder/100/100';
+                        }
+                        
+                        // 處理公司信箱
+                        const companyEmail = userData.companyEmail || '';
+                        const emailPrefix = companyEmail.split('@')[0] || '';
+                        document.getElementById('edit-company-email').value = emailPrefix;
+                    }
+                    
+                    // 顯示編輯頁面
+                    showPage('edit-profile-page');
+                })
+                .catch(error => {
+                    console.error('獲取用戶資料失敗:', error);
+                    alert('獲取用戶資料失敗，請稍後再試');
+                });
+        });
+
+        // 取消編輯按鈕點擊事件
+        document.getElementById('cancel-edit-profile').addEventListener('click', function() {
+            showPage('profile-page');
+        });
+
+        // 修改提交編輯表單
+        document.getElementById('edit-profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 獲取表單數據
+            const name = document.getElementById('edit-name').value;
+            const phone = document.getElementById('edit-phone').value;
+            const extension = document.getElementById('edit-extension').value;
+            const companyEmailPrefix = document.getElementById('edit-company-email').value;
+            const companyEmail = companyEmailPrefix ? `${companyEmailPrefix}@chailease.com.tw` : '';
+            const avatarFile = document.getElementById('profile-avatar').files[0];
+            
+            // 禁用提交按鈕
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '儲存中...';
+            
+            try {
+                let avatarUrl = null;
+                
+                // 如果有上傳新頭像，則先上傳到 Storage
+                if (avatarFile) {
+                    // 創建唯一的檔案名
+                    const fileName = `avatars/${currentUser.uid}/${Date.now()}-${Math.random().toString(36).substring(2)}.${avatarFile.name.split('.').pop()}`;
+                    
+                    // 上傳到 Firebase Storage
+                    const fileRef = storage.ref().child(fileName);
+                    await fileRef.put(avatarFile);
+                    
+                    // 獲取下載 URL
+                    avatarUrl = await fileRef.getDownloadURL();
+                }
+                
+                // 準備更新的資料
+                const updateData = {
+                    name: name,
+                    phone: phone,
+                    extension: extension,
+                    companyEmail: companyEmail,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // 如果有上傳新頭像，則添加到更新資料中
+                if (avatarUrl) {
+                    updateData.avatarUrl = avatarUrl;
+                }
+                
+                // 更新用戶資料
+                await db.collection('users').doc(currentUser.uid).update(updateData);
+                
+                alert('個人資料已更新');
+                
+                // 刷新用戶資料並返回個人資料頁
+                showUserProfile();
+                showPage('profile-page');
+                
+            } catch (error) {
+                console.error('更新用戶資料失敗:', error);
+                alert('更新失敗: ' + error.message);
+            } finally {
+                // 恢復提交按鈕
+                submitBtn.disabled = false;
+                submitBtn.textContent = '儲存變更';
             }
         });
 
