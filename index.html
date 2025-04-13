@@ -477,53 +477,6 @@
         .image-preview:hover .remove-image {
             background: rgba(220,53,69,0.8);
         }
-
-        .image-index {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 12px;
-        }
-
-        .image-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            background: rgba(0,0,0,0.6);
-        }
-
-        .image-control-btn {
-            color: white;
-            padding: 2px 6px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .image-control-btn:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        /* 圖片處理進度條 */
-        .image-processing-progress {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 4px;
-            background-color: var(--primary-color);
-            width: 0%;
-            transition: width 0.3s;
-        }
         
         /* 無限滾動加載指示器 */
         .loading {
@@ -2172,48 +2125,9 @@
         truckImagesInput.addEventListener('change', async (e) => {
             const files = e.target.files;
             
-            // 清空圖片預覽
+            // 清空預覽區域
             imagePreviews.innerHTML = '';
-            editingImages = truck.images || [];
-
-            // 顯示現有圖片預覽
-            if (editingImages.length > 0) {
-                editingImages.forEach((imageUrl, index) => {
-                    const preview = document.createElement('div');
-                    preview.className = 'image-preview';
-                    
-                    const img = document.createElement('img');
-                    img.src = imageUrl;
-                    
-                    // 添加圖片序號
-                    const indexBadge = document.createElement('div');
-                    indexBadge.className = 'image-index';
-                    indexBadge.textContent = (index + 1);
-                    
-                    const removeBtn = document.createElement('div');
-                    removeBtn.className = 'remove-image';
-                    removeBtn.innerHTML = '×';
-                    removeBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        
-                        // 從陣列中移除
-                        editingImages.splice(index, 1);
-                        
-                        // 移除預覽元素
-                        preview.remove();
-                        
-                        // 重新整理所有預覽中的序號
-                        document.querySelectorAll('.image-index').forEach((badge, idx) => {
-                            badge.textContent = (idx + 1);
-                        });
-                    });
-                    
-                    preview.appendChild(img);
-                    preview.appendChild(indexBadge);
-                    preview.appendChild(removeBtn);
-                    imagePreviews.appendChild(preview);
-                });
-            }
+            truckImages = [];
             
             // 添加新選擇的檔案
             for (let i = 0; i < files.length; i++) {
@@ -2228,21 +2142,13 @@
                     processingPreview.className = 'image-preview';
                     processingPreview.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; background:#f0f0f0;">處理中...</div>';
                     imagePreviews.appendChild(processingPreview);
-
-                    // 獲取進度條元素
-                    const progressBar = processingPreview.querySelector('.image-processing-progress');
                     
                     // 圖片壓縮選項
                     const options = {
                         maxSizeMB: 1,                  // 最大檔案大小為 1MB
                         maxWidthOrHeight: 1200,        // 最大寬度或高度為 1200 像素
                         useWebWorker: true,            // 使用 Web Worker 提高性能
-                        preserveExif: true,            // 保留 EXIF 數據（如方向信息）
-                        onProgress: percent => {        // 添加進度回調
-                            if (progressBar) {
-                                progressBar.style.width = `${percent}%`;
-                            }
-                        }
+                        preserveExif: true             // 保留 EXIF 數據（如方向信息）
                     };
                     
                     // 壓縮圖片
@@ -2297,10 +2203,6 @@
                     alert(`圖片 "${file.name}" 處理失敗，請嘗試其他圖片`);
                 }
             }
-
-            // 啟用圖片拖拽排序
-            enableImageDragSort();
-
         });
 
         // 格式化檔案大小
@@ -2438,105 +2340,6 @@
                 
                 // 上傳新圖片（如果有）
                 let imageUrls = [...editingImages]; // 保留編輯時未刪除的原有圖片
-
-                if (truckImages.length > 0) {
-                    // 創建上傳進度指示器
-                    const uploadProgressContainer = document.createElement('div');
-                    uploadProgressContainer.style.position = 'fixed';
-                    uploadProgressContainer.style.top = '50%';
-                    uploadProgressContainer.style.left = '50%';
-                    uploadProgressContainer.style.transform = 'translate(-50%, -50%)';
-                    uploadProgressContainer.style.background = 'white';
-                    uploadProgressContainer.style.padding = '20px';
-                    uploadProgressContainer.style.borderRadius = '8px';
-                    uploadProgressContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-                    uploadProgressContainer.style.zIndex = '9999';
-                    uploadProgressContainer.style.width = '300px';
-                    uploadProgressContainer.style.textAlign = 'center';
-                    
-                    const progressTitle = document.createElement('h3');
-                    progressTitle.textContent = '上傳圖片中...';
-                    
-                    const progressText = document.createElement('div');
-                    progressText.style.margin = '10px 0';
-                    progressText.textContent = `0/${truckImages.length} 已完成`;
-                    
-                    const progressBar = document.createElement('div');
-                    progressBar.style.height = '8px';
-                    progressBar.style.background = '#eee';
-                    progressBar.style.borderRadius = '4px';
-                    progressBar.style.overflow = 'hidden';
-                    
-                    const progressFill = document.createElement('div');
-                    progressFill.style.height = '100%';
-                    progressFill.style.background = 'var(--primary-color)';
-                    progressFill.style.width = '0%';
-                    progressFill.style.transition = 'width 0.3s';
-                    
-                    progressBar.appendChild(progressFill);
-                    uploadProgressContainer.appendChild(progressTitle);
-                    uploadProgressContainer.appendChild(progressText);
-                    uploadProgressContainer.appendChild(progressBar);
-                    
-                    document.body.appendChild(uploadProgressContainer);
-                    
-                    try {
-                        for (let i = 0; i < truckImages.length; i++) {
-                            const file = truckImages[i];
-                            
-                            // 更新進度顯示
-                            progressFill.style.width = `${(i / truckImages.length) * 100}%`;
-                            progressText.textContent = `${i}/${truckImages.length} 已完成`;
-                            
-                            // 創建唯一的檔案名
-                            const fileName = `trucks/${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
-                            
-                            // 創建元數據以設置內容類型
-                            const metadata = {
-                                contentType: file.type,
-                                customMetadata: {
-                                    originalName: file.name,
-                                    truckId: truckId || 'new',
-                                    uploadedBy: currentUser ? currentUser.email : 'anonymous',
-                                    uploadTime: new Date().toISOString()
-                                }
-                            };
-                            
-                            // 上傳到 Firebase Storage
-                            const fileRef = storage.ref().child(fileName);
-                            
-                            // 使用帶進度監控的上傳任務
-                            const uploadTask = fileRef.put(file, metadata);
-                            
-                            // 設置進度監聽器
-                            uploadTask.on('state_changed', 
-                                (snapshot) => {
-                                    // 計算單個文件的進度
-                                    const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
-                                    // 計算總體進度（當前文件的進度 + 已完成文件的進度）
-                                    const totalProgress = ((i + fileProgress) / truckImages.length) * 100;
-                                    progressFill.style.width = `${totalProgress}%`;
-                                },
-                                (error) => {
-                                    console.error('上傳圖片失敗:', error);
-                                }
-                            );
-                            
-                            // 等待上傳完成
-                            await uploadTask;
-                            
-                            // 獲取下載 URL
-                            const downloadUrl = await fileRef.getDownloadURL();
-                            imageUrls.push(downloadUrl);
-                            
-                            // 更新進度顯示
-                            progressText.textContent = `${i + 1}/${truckImages.length} 已完成`;
-                        }
-                    } finally {
-                        // 移除進度指示器
-                        document.body.removeChild(uploadProgressContainer);
-                    }
-                }
 
                 if (truckImages.length > 0) {
                     for (const file of truckImages) {
@@ -3531,115 +3334,6 @@
                     localStorage.setItem('lastImageCleanupTime', now);
                 });
             }
-        }
-
-        // 啟用圖片拖拽排序功能
-        function enableImageDragSort() {
-            const container = document.getElementById('image-previews');
-            if (!container) return;
-            
-            let dragSrcEl = null;
-            
-            function handleDragStart(e) {
-                this.style.opacity = '0.4';
-                dragSrcEl = this;
-                
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/html', this.innerHTML);
-            }
-            
-            function handleDragOver(e) {
-                if (e.preventDefault) {
-                    e.preventDefault();
-                }
-                e.dataTransfer.dropEffect = 'move';
-                return false;
-            }
-            
-            function handleDragEnter(e) {
-                this.classList.add('over');
-            }
-            
-            function handleDragLeave(e) {
-                this.classList.remove('over');
-            }
-            
-            function handleDrop(e) {
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                }
-                
-                // 如果拖放到自己上面，則不執行任何操作
-                if (dragSrcEl !== this) {
-                    // 獲取源元素和目標元素的索引
-                    const children = Array.from(container.children);
-                    const sourceIndex = children.indexOf(dragSrcEl);
-                    const targetIndex = children.indexOf(this);
-                    
-                    // 移動 editingImages 陣列中的元素
-                    if (editingImages.length > 0) {
-                        const temp = editingImages[sourceIndex];
-                        editingImages.splice(sourceIndex, 1);
-                        editingImages.splice(targetIndex, 0, temp);
-                    }
-                    
-                    // 移動 truckImages 陣列中的元素
-                    if (truckImages.length > 0 && sourceIndex < truckImages.length && targetIndex < truckImages.length) {
-                        const temp = truckImages[sourceIndex];
-                        truckImages.splice(sourceIndex, 1);
-                        truckImages.splice(targetIndex, 0, temp);
-                    }
-                    
-                    // 更新 UI
-                    if (targetIndex < sourceIndex) {
-                        container.insertBefore(dragSrcEl, this);
-                    } else {
-                        container.insertBefore(dragSrcEl, this.nextSibling);
-                    }
-                    
-                    // 更新所有圖片的索引顯示
-                    children.forEach((child, idx) => {
-                        const indexEl = child.querySelector('.image-index');
-                        if (indexEl) {
-                            indexEl.textContent = (idx + 1);
-                        }
-                    });
-                }
-                
-                return false;
-            }
-            
-            function handleDragEnd(e) {
-                this.style.opacity = '1';
-                
-                // 移除所有拖拽相關類別
-                document.querySelectorAll('.image-preview').forEach(item => {
-                    item.classList.remove('over');
-                });
-            }
-            
-            // 為每個圖片預覽添加拖拽事件
-            function addDragEvents() {
-                document.querySelectorAll('.image-preview').forEach(item => {
-                    item.setAttribute('draggable', 'true');
-                    item.addEventListener('dragstart', handleDragStart, false);
-                    item.addEventListener('dragenter', handleDragEnter, false);
-                    item.addEventListener('dragover', handleDragOver, false);
-                    item.addEventListener('dragleave', handleDragLeave, false);
-                    item.addEventListener('drop', handleDrop, false);
-                    item.addEventListener('dragend', handleDragEnd, false);
-                });
-            }
-            
-            // 添加一個監視器，當容器子元素變化時重新添加拖拽事件
-            const observer = new MutationObserver(mutations => {
-                addDragEvents();
-            });
-            
-            observer.observe(container, { childList: true });
-            
-            // 初始添加拖拽事件
-            addDragEvents();
         }
 
     </script>
