@@ -4,11 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>大貨車業務資訊共享系統</title>
+
     <!-- Firebase SDK -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
+
+    <!-- 圖片壓縮處理庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/1.0.14/browser-image-compression.min.js"></script>
+    
+    <!-- IndexedDB 依賴庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/idb/7.0.2/idb.min.js"></script>
 
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#3498db">
@@ -416,35 +423,48 @@
         .image-upload {
             margin-bottom: var(--spacing-md);
         }
-        
+
         .preview-container {
             display: flex;
             flex-wrap: wrap;
             gap: var(--spacing-sm);
             margin-top: var(--spacing-sm);
         }
-        
+
         .image-preview {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: var(--radius-sm);
             overflow: hidden;
             position: relative;
+            box-shadow: var(--shadow-sm);
         }
-        
+
         .image-preview img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        
+
+        .image-size {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            text-align: center;
+        }
+
         .remove-image {
             position: absolute;
             top: 2px;
             right: 2px;
             width: 20px;
             height: 20px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             color: white;
             border-radius: 50%;
             display: flex;
@@ -452,6 +472,57 @@
             align-items: center;
             font-size: 12px;
             cursor: pointer;
+        }
+
+        .image-preview:hover .remove-image {
+            background: rgba(220,53,69,0.8);
+        }
+
+        .image-index {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .image-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.6);
+        }
+
+        .image-control-btn {
+            color: white;
+            padding: 2px 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .image-control-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 圖片處理進度條 */
+        .image-processing-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s;
         }
         
         /* 無限滾動加載指示器 */
@@ -542,9 +613,149 @@
             margin-bottom: var(--spacing-md);
         }
 
+        /* 離線模式樣式 */
+        .offline-mode {
+            background-color: #f8f9fa;
+        }
+
+        .offline-banner {
+            background-color: var(--warning-color);
+            color: white;
+            text-align: center;
+            padding: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-weight: bold;
+        }
+
+        .offline-truck {
+            opacity: 0.8;
+            position: relative;
+        }
+
+        .offline-truck::after {
+            content: '離線添加';
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: var(--warning-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+        }
+
+        /* 通知樣式 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            width: 300px;
+            max-width: 90%;
+            z-index: 2000;
+            overflow: hidden;
+            animation: slideIn 0.3s forwards;
+        }
+
+        .notification-content {
+            padding: var(--spacing-md);
+        }
+
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: var(--spacing-xs);
+            color: var(--dark-color);
+        }
+
+        .notification-message {
+            font-size: var(--font-size-sm);
+            color: var(--text-color);
+        }
+
+        .notification-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--border-color);
+        }
+
+        .notification-hide {
+            animation: slideOut 0.3s forwards;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .validation-error {
+            color: var(--danger-color);
+            font-size: var(--font-size-sm);
+            margin-top: var(--spacing-xs);
+            display: block;
+        }
+
+        input:invalid, select:invalid, textarea:invalid {
+            border-color: var(--danger-color);
+        }
+
+        /* 通知樣式 */
+        .notification {
+            background: white;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            animation: slide-in 0.3s ease-out;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .notification-message {
+            font-size: var(--font-size-sm);
+        }
+        
+        .notification-time {
+            font-size: var(--font-size-sm);
+            color: #777;
+            margin-top: var(--spacing-xs);
+            text-align: right;
+        }
+        
+        .notification-close {
+            float: right;
+            cursor: pointer;
+            font-size: var(--font-size-lg);
+            line-height: 1;
+        }
+        
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
     </style>
 </head>
 <body>
+
+    <!-- 通知容器 -->
+    <div id="notification-container" style="position: fixed; top: 10px; right: 10px; z-index: 2000; max-width: 300px; display: none;"></div>
+
     <!-- 應用程式容器 -->
     <div id="app">
         <!-- 車輛列表頁面 -->
@@ -1156,6 +1367,8 @@
         let activeFilters = {}; // 活動篩選條件
         let editingImages = []; // 編輯時的圖片列表
         let truckImages = []; // 上傳的圖片檔案列表
+        let notificationsListener = null; // 通知監聽器
+        let lastNotificationTime = localStorage.getItem('lastNotificationTime') || 0; // 上次檢查通知的時間
 
         // 添加分頁相關變數
         let currentPage = 1;
@@ -1300,111 +1513,221 @@
             if (isLoadingMore) return;
             
             isLoadingMore = true;
+            truckList.innerHTML = '<p class="text-center">載入中...</p>';
             
             try {
-                // 創建基礎查詢
-                let query = db.collection('trucks');
-                
-                // 應用篩選條件
-                if (activeFilters.status && activeFilters.status !== 'all') {
-                    query = query.where('status', '==', activeFilters.status);
-                }
-
-                if (activeFilters.brand) {
-                    query = query.where('brand', '==', activeFilters.brand);
-                }
-
-                if (activeFilters.type) {
-                    query = query.where('type', '==', activeFilters.type);
-                }
-
-                // 獲取所有符合條件的文檔
-                let querySnapshot = await query.get();
-                let filteredDocs = querySnapshot.docs;
-
-                // 對於 Firestore 不支援的複合查詢，在前端進行篩選
-                if (activeFilters.priceMin || activeFilters.priceMax || 
-                    activeFilters.yearMin || activeFilters.yearMax || 
-                    activeFilters.weight || activeFilters.length || 
-                    activeFilters.keyword || activeFilters.sellerEmail) {
+                // 檢查網絡連接狀態
+                if (!navigator.onLine) {
+                    console.log('離線模式：從IndexedDB加載數據');
+                    // 從IndexedDB獲取車輛數據
+                    const cachedTrucks = await getTrucksFromIndexedDB();
                     
-                    filteredDocs = filteredDocs.filter(doc => {
-                        const data = doc.data();
-                        
-                        // 價格範圍篩選
-                        if (activeFilters.priceMin && data.price < parseFloat(activeFilters.priceMin)) return false;
-                        if (activeFilters.priceMax && data.price > parseFloat(activeFilters.priceMax)) return false;
-                        
-                        // 年份範圍篩選
-                        if (activeFilters.yearMin && data.year < parseInt(activeFilters.yearMin)) return false;
-                        if (activeFilters.yearMax && data.year > parseInt(activeFilters.yearMax)) return false;
-                        
-                        // 載重篩選
-                        if (activeFilters.weight && data.weight < parseFloat(activeFilters.weight)) return false;
-                        
-                        // 車身長度篩選
-                        if (activeFilters.length && data.length < parseFloat(activeFilters.length)) return false;
-                        
-                        // 關鍵字搜尋 (搜尋品牌、型號、描述等多個欄位)
-                        if (activeFilters.keyword) {
-                            const keyword = activeFilters.keyword.toLowerCase();
-                            const searchText = (
-                                (data.brand || '') + ' ' +
-                                (data.model || '') + ' ' +
-                                (data.description || '') + ' ' +
-                                (data.sellerName || '')
-                            ).toLowerCase();
+                    // 處理離線篩選
+                    let filteredTrucks = cachedTrucks;
+                    
+                    if (Object.keys(activeFilters).length > 0) {
+                        filteredTrucks = cachedTrucks.filter(truck => {
+                            // 應用篩選條件
+                            if (activeFilters.status && activeFilters.status !== 'all' && truck.status !== activeFilters.status) return false;
+                            if (activeFilters.brand && truck.brand !== activeFilters.brand) return false;
+                            if (activeFilters.type && truck.type !== activeFilters.type) return false;
+                            if (activeFilters.priceMin && truck.price < parseFloat(activeFilters.priceMin)) return false;
+                            if (activeFilters.priceMax && truck.price > parseFloat(activeFilters.priceMax)) return false;
+                            if (activeFilters.yearMin && truck.year < parseInt(activeFilters.yearMin)) return false;
+                            if (activeFilters.yearMax && truck.year > parseInt(activeFilters.yearMax)) return false;
+                            if (activeFilters.weight && truck.weight < parseFloat(activeFilters.weight)) return false;
+                            if (activeFilters.length && truck.length < parseFloat(activeFilters.length)) return false;
                             
-                            if (!searchText.includes(keyword)) return false;
-                        }
-
-                        // 按業務郵箱篩選
-                        if (activeFilters.sellerEmail && data.sellerEmail !== activeFilters.sellerEmail) return false;
-                        
-                        return true;
-                    });
-                }
-
-                // 存儲所有符合條件的車輛
-                allTrucks = filteredDocs.map(doc => {
-                    return { id: doc.id, ...doc.data() };
-                });
-                
-                // 計算總頁數
-                totalPages = Math.ceil(allTrucks.length / trucksPerPage);
-                if (totalPages === 0) totalPages = 1;
-                
-                // 如果是初始加載或重新篩選，重置為第一頁
-                if (isInitialLoad) {
-                    currentPage = 1;
-                }
-                
-                // 確保頁碼在有效範圍內
-                if (currentPage > totalPages) {
-                    currentPage = totalPages;
-                }
-                
-                // 更新頁面信息顯示
-                document.getElementById('current-page').textContent = currentPage;
-                document.getElementById('total-pages').textContent = totalPages;
-                document.getElementById('total-trucks').textContent = allTrucks.length;
-                
-                // 計算當前頁的車輛
-                const startIndex = (currentPage - 1) * trucksPerPage;
-                const endIndex = Math.min(startIndex + trucksPerPage, allTrucks.length);
-                const currentPageTrucks = allTrucks.slice(startIndex, endIndex);
-
-                // 清空列表
-                truckList.innerHTML = '';
-
-                // 檢查是否有符合條件的車輛
-                if (currentPageTrucks.length === 0) {
-                    truckList.innerHTML = '<p class="text-center">沒有符合條件的車輛</p>';
+                            // 關鍵字搜尋
+                            if (activeFilters.keyword) {
+                                const keyword = activeFilters.keyword.toLowerCase();
+                                const searchText = (
+                                    (truck.brand || '') + ' ' +
+                                    (truck.model || '') + ' ' +
+                                    (truck.description || '') + ' ' +
+                                    (truck.sellerName || '')
+                                ).toLowerCase();
+                                
+                                if (!searchText.includes(keyword)) return false;
+                            }
+                            
+                            // 按業務郵箱篩選
+                            if (activeFilters.sellerEmail && truck.sellerEmail !== activeFilters.sellerEmail) return false;
+                            
+                            return true;
+                        });
+                    }
+                    
+                    // 獲取離線添加的車輛
+                    const offlineTrucks = await getOfflineTrucks();
+                    allTrucks = [...filteredTrucks, ...offlineTrucks];
+                    
+                    // 計算總頁數
+                    totalPages = Math.ceil(allTrucks.length / trucksPerPage);
+                    if (totalPages === 0) totalPages = 1;
+                    
+                    // 如果是初始加載或重新篩選，重置為第一頁
+                    if (isInitialLoad) {
+                        currentPage = 1;
+                    }
+                    
+                    // 確保頁碼在有效範圍內
+                    if (currentPage > totalPages) {
+                        currentPage = totalPages;
+                    }
+                    
+                    // 更新頁面信息顯示
+                    document.getElementById('current-page').textContent = currentPage;
+                    document.getElementById('total-pages').textContent = totalPages;
+                    document.getElementById('total-trucks').textContent = allTrucks.length;
+                    
+                    // 計算當前頁的車輛
+                    const startIndex = (currentPage - 1) * trucksPerPage;
+                    const endIndex = Math.min(startIndex + trucksPerPage, allTrucks.length);
+                    const currentPageTrucks = allTrucks.slice(startIndex, endIndex);
+                    
+                    // 清空列表
+                    truckList.innerHTML = '';
+                    
+                    // 檢查是否有符合條件的車輛
+                    if (currentPageTrucks.length === 0) {
+                        truckList.innerHTML = '<p class="text-center">沒有符合條件的車輛</p>';
+                    } else {
+                        // 渲染車輛卡片
+                        currentPageTrucks.forEach(truck => {
+                            const card = createTruckCard(truck);
+                            if (truck.isOffline) {
+                                card.classList.add('offline-truck');
+                            }
+                            truckList.appendChild(card);
+                        });
+                    }
+                    
+                    // 顯示離線模式提示
+                    if (!document.querySelector('.offline-banner')) {
+                        const offlineBanner = document.createElement('div');
+                        offlineBanner.className = 'offline-banner';
+                        offlineBanner.innerHTML = '⚠️ 離線模式：顯示的是本地緩存的數據';
+                        document.querySelector('.container').insertBefore(offlineBanner, document.querySelector('.container').firstChild);
+                    }
+                    
                 } else {
-                    // 渲染車輛卡片
-                    currentPageTrucks.forEach(truck => {
-                        truckList.appendChild(createTruckCard(truck));
+                    // 在線模式：從Firebase加載數據
+                    console.log('在線模式：從Firebase加載數據');
+                    
+                    // 創建基礎查詢
+                    let query = db.collection('trucks');
+                    
+                    // 應用篩選條件
+                    if (activeFilters.status && activeFilters.status !== 'all') {
+                        query = query.where('status', '==', activeFilters.status);
+                    }
+
+                    if (activeFilters.brand) {
+                        query = query.where('brand', '==', activeFilters.brand);
+                    }
+
+                    if (activeFilters.type) {
+                        query = query.where('type', '==', activeFilters.type);
+                    }
+
+                    // 獲取所有符合條件的文檔
+                    let querySnapshot = await query.get();
+                    let filteredDocs = querySnapshot.docs;
+
+                    // 對於 Firestore 不支援的複合查詢，在前端進行篩選
+                    if (activeFilters.priceMin || activeFilters.priceMax || 
+                        activeFilters.yearMin || activeFilters.yearMax || 
+                        activeFilters.weight || activeFilters.length || 
+                        activeFilters.keyword || activeFilters.sellerEmail) {
+                        
+                        filteredDocs = filteredDocs.filter(doc => {
+                            const data = doc.data();
+                            
+                            // 價格範圍篩選
+                            if (activeFilters.priceMin && data.price < parseFloat(activeFilters.priceMin)) return false;
+                            if (activeFilters.priceMax && data.price > parseFloat(activeFilters.priceMax)) return false;
+                            
+                            // 年份範圍篩選
+                            if (activeFilters.yearMin && data.year < parseInt(activeFilters.yearMin)) return false;
+                            if (activeFilters.yearMax && data.year > parseInt(activeFilters.yearMax)) return false;
+                            
+                            // 載重篩選
+                            if (activeFilters.weight && data.weight < parseFloat(activeFilters.weight)) return false;
+                            
+                            // 車身長度篩選
+                            if (activeFilters.length && data.length < parseFloat(activeFilters.length)) return false;
+                            
+                            // 關鍵字搜尋 (搜尋品牌、型號、描述等多個欄位)
+                            if (activeFilters.keyword) {
+                                const keyword = activeFilters.keyword.toLowerCase();
+                                const searchText = (
+                                    (data.brand || '') + ' ' +
+                                    (data.model || '') + ' ' +
+                                    (data.description || '') + ' ' +
+                                    (data.sellerName || '')
+                                ).toLowerCase();
+                                
+                                if (!searchText.includes(keyword)) return false;
+                            }
+
+                            // 按業務郵箱篩選
+                            if (activeFilters.sellerEmail && data.sellerEmail !== activeFilters.sellerEmail) return false;
+                            
+                            return true;
+                        });
+                    }
+
+                    // 存儲所有符合條件的車輛
+                    allTrucks = filteredDocs.map(doc => {
+                        return { id: doc.id, ...doc.data() };
                     });
+                    
+                    // 將數據緩存到IndexedDB
+                    await saveTrucksToIndexedDB(allTrucks);
+                    
+                    // 計算總頁數
+                    totalPages = Math.ceil(allTrucks.length / trucksPerPage);
+                    if (totalPages === 0) totalPages = 1;
+                    
+                    // 如果是初始加載或重新篩選，重置為第一頁
+                    if (isInitialLoad) {
+                        currentPage = 1;
+                    }
+                    
+                    // 確保頁碼在有效範圍內
+                    if (currentPage > totalPages) {
+                        currentPage = totalPages;
+                    }
+                    
+                    // 更新頁面信息顯示
+                    document.getElementById('current-page').textContent = currentPage;
+                    document.getElementById('total-pages').textContent = totalPages;
+                    document.getElementById('total-trucks').textContent = allTrucks.length;
+                    
+                    // 計算當前頁的車輛
+                    const startIndex = (currentPage - 1) * trucksPerPage;
+                    const endIndex = Math.min(startIndex + trucksPerPage, allTrucks.length);
+                    const currentPageTrucks = allTrucks.slice(startIndex, endIndex);
+
+                    // 清空列表
+                    truckList.innerHTML = '';
+
+                    // 檢查是否有符合條件的車輛
+                    if (currentPageTrucks.length === 0) {
+                        truckList.innerHTML = '<p class="text-center">沒有符合條件的車輛</p>';
+                    } else {
+                        // 渲染車輛卡片
+                        currentPageTrucks.forEach(truck => {
+                            truckList.appendChild(createTruckCard(truck));
+                        });
+                    }
+                    
+                    // 移除離線模式提示
+                    const offlineBanner = document.querySelector('.offline-banner');
+                    if (offlineBanner) {
+                        offlineBanner.remove();
+                    }
                 }
                 
                 // 更新分頁按鈕狀態
@@ -1413,7 +1736,43 @@
                 
             } catch (error) {
                 console.error('載入車輛失敗:', error);
-                alert('載入車輛失敗，請稍後再試');
+                truckList.innerHTML = '<p class="text-center">載入車輛失敗，請稍後再試</p>';
+                
+                // 嘗試從IndexedDB加載
+                try {
+                    const cachedTrucks = await getTrucksFromIndexedDB();
+                    if (cachedTrucks.length > 0) {
+                        allTrucks = cachedTrucks;
+                        
+                        // 計算總頁數和當前頁
+                        totalPages = Math.ceil(allTrucks.length / trucksPerPage);
+                        if (totalPages === 0) totalPages = 1;
+                        if (currentPage > totalPages) currentPage = totalPages;
+                        
+                        // 更新頁面信息
+                        document.getElementById('current-page').textContent = currentPage;
+                        document.getElementById('total-pages').textContent = totalPages;
+                        document.getElementById('total-trucks').textContent = allTrucks.length;
+                        
+                        // 計算當前頁的車輛
+                        const startIndex = (currentPage - 1) * trucksPerPage;
+                        const endIndex = Math.min(startIndex + trucksPerPage, allTrucks.length);
+                        const currentPageTrucks = allTrucks.slice(startIndex, endIndex);
+                        
+                        // 清空列表
+                        truckList.innerHTML = '';
+                        
+                        // 渲染車輛卡片
+                        currentPageTrucks.forEach(truck => {
+                            truckList.appendChild(createTruckCard(truck));
+                        });
+                        
+                        // 顯示緩存數據提示
+                        showNotification('顯示緩存數據', '目前顯示的是離線緩存的數據，可能不是最新信息。');
+                    }
+                } catch (cacheError) {
+                    console.error('從緩存加載失敗:', cacheError);
+                }
             } finally {
                 isLoadingMore = false;
             }
@@ -1810,12 +2169,51 @@
         });
         
         // 處理圖片上傳預覽
-        truckImagesInput.addEventListener('change', (e) => {
+        truckImagesInput.addEventListener('change', async (e) => {
             const files = e.target.files;
             
-            // 清空預覽區域
+            // 清空圖片預覽
             imagePreviews.innerHTML = '';
-            truckImages = [];
+            editingImages = truck.images || [];
+
+            // 顯示現有圖片預覽
+            if (editingImages.length > 0) {
+                editingImages.forEach((imageUrl, index) => {
+                    const preview = document.createElement('div');
+                    preview.className = 'image-preview';
+                    
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    
+                    // 添加圖片序號
+                    const indexBadge = document.createElement('div');
+                    indexBadge.className = 'image-index';
+                    indexBadge.textContent = (index + 1);
+                    
+                    const removeBtn = document.createElement('div');
+                    removeBtn.className = 'remove-image';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        // 從陣列中移除
+                        editingImages.splice(index, 1);
+                        
+                        // 移除預覽元素
+                        preview.remove();
+                        
+                        // 重新整理所有預覽中的序號
+                        document.querySelectorAll('.image-index').forEach((badge, idx) => {
+                            badge.textContent = (idx + 1);
+                        });
+                    });
+                    
+                    preview.appendChild(img);
+                    preview.appendChild(indexBadge);
+                    preview.appendChild(removeBtn);
+                    imagePreviews.appendChild(preview);
+                });
+            }
             
             // 添加新選擇的檔案
             for (let i = 0; i < files.length; i++) {
@@ -1824,36 +2222,93 @@
                 // 只接受圖片檔案
                 if (!file.type.startsWith('image/')) continue;
                 
-                truckImages.push(file);
-                
-                // 創建預覽元素
-                const preview = document.createElement('div');
-                preview.className = 'image-preview';
-                
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
-                
-                const removeBtn = document.createElement('div');
-                removeBtn.className = 'remove-image';
-                removeBtn.innerHTML = '×';
-                removeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                try {
+                    // 顯示處理中提示
+                    const processingPreview = document.createElement('div');
+                    processingPreview.className = 'image-preview';
+                    processingPreview.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; background:#f0f0f0;">處理中...</div>';
+                    imagePreviews.appendChild(processingPreview);
+
+                    // 獲取進度條元素
+                    const progressBar = processingPreview.querySelector('.image-processing-progress');
                     
-                    // 從陣列中移除檔案
-                    const index = truckImages.indexOf(file);
-                    if (index > -1) {
-                        truckImages.splice(index, 1);
+                    // 圖片壓縮選項
+                    const options = {
+                        maxSizeMB: 1,                  // 最大檔案大小為 1MB
+                        maxWidthOrHeight: 1200,        // 最大寬度或高度為 1200 像素
+                        useWebWorker: true,            // 使用 Web Worker 提高性能
+                        preserveExif: true,            // 保留 EXIF 數據（如方向信息）
+                        onProgress: percent => {        // 添加進度回調
+                            if (progressBar) {
+                                progressBar.style.width = `${percent}%`;
+                            }
+                        }
+                    };
+                    
+                    // 壓縮圖片
+                    let compressedFile;
+                    // 若檔案小於 150KB 且尺寸小於 1200px，則跳過壓縮
+                    if (file.size < 150 * 1024) {
+                        compressedFile = file;
+                    } else {
+                        compressedFile = await imageCompression(file, options);
                     }
                     
-                    // 移除預覽元素
-                    preview.remove();
-                });
-                
-                preview.appendChild(img);
-                preview.appendChild(removeBtn);
-                imagePreviews.appendChild(preview);
+                    // 創建預覽元素（替換處理中提示）
+                    imagePreviews.removeChild(processingPreview);
+                    
+                    const preview = document.createElement('div');
+                    preview.className = 'image-preview';
+                    
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(compressedFile);
+                    
+                    // 添加檔案大小顯示
+                    const sizeDisplay = document.createElement('div');
+                    sizeDisplay.className = 'image-size';
+                    sizeDisplay.textContent = formatFileSize(compressedFile.size);
+                    
+                    const removeBtn = document.createElement('div');
+                    removeBtn.className = 'remove-image';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        // 從陣列中移除檔案
+                        const index = truckImages.indexOf(compressedFile);
+                        if (index > -1) {
+                            truckImages.splice(index, 1);
+                        }
+                        
+                        // 移除預覽元素
+                        preview.remove();
+                    });
+                    
+                    preview.appendChild(img);
+                    preview.appendChild(sizeDisplay);
+                    preview.appendChild(removeBtn);
+                    imagePreviews.appendChild(preview);
+                    
+                    // 將壓縮後的圖片添加到上傳列表
+                    truckImages.push(compressedFile);
+                    
+                } catch (error) {
+                    console.error('圖片處理失敗:', error);
+                    alert(`圖片 "${file.name}" 處理失敗，請嘗試其他圖片`);
+                }
             }
+
+            // 啟用圖片拖拽排序
+            enableImageDragSort();
+
         });
+
+        // 格式化檔案大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
         
         // 加載編輯的車輛資訊
         async function editTruck(truckId) {
@@ -1940,16 +2395,38 @@
             try {
                 // 獲取表單數據
                 const truckId = document.getElementById('truck-id').value;
+                const price = parseFloat(document.getElementById('truck-price').value);
+                const weight = parseFloat(document.getElementById('truck-weight').value);
+                const length = parseFloat(document.getElementById('truck-length').value);
+                const year = parseInt(document.getElementById('truck-year').value);
+                
+                // 數據驗證
+                if (price < validationRules.price.min || price > validationRules.price.max) {
+                    throw new Error(validationRules.price.message);
+                }
+                
+                if (weight < validationRules.weight.min || weight > validationRules.weight.max) {
+                    throw new Error(validationRules.weight.message);
+                }
+                
+                if (length < validationRules.length.min || length > validationRules.length.max) {
+                    throw new Error(validationRules.length.message);
+                }
+                
+                if (year < validationRules.year.min || year > validationRules.year.max) {
+                    throw new Error(validationRules.year.message);
+                }
+                
                 const formData = {
                     brand: document.getElementById('truck-brand').value,
                     model: document.getElementById('truck-model').value,
                     type: document.getElementById('truck-type').value,
                     tailgateLift: document.getElementById('tailgate-lift').value,
-                    price: parseFloat(document.getElementById('truck-price').value),
-                    year: parseInt(document.getElementById('truck-year').value),
+                    price: price,
+                    year: year,
                     emissionPhase: document.getElementById('emission-phase').value,
-                    weight: parseFloat(document.getElementById('truck-weight').value),
-                    length: parseFloat(document.getElementById('truck-length').value),
+                    weight: weight,
+                    length: length,
                     engine: document.getElementById('truck-engine').value,
                     condition: document.getElementById('truck-condition').value,
                     status: document.getElementById('truck-status').value,
@@ -1961,15 +2438,125 @@
                 
                 // 上傳新圖片（如果有）
                 let imageUrls = [...editingImages]; // 保留編輯時未刪除的原有圖片
-                
+
+                if (truckImages.length > 0) {
+                    // 創建上傳進度指示器
+                    const uploadProgressContainer = document.createElement('div');
+                    uploadProgressContainer.style.position = 'fixed';
+                    uploadProgressContainer.style.top = '50%';
+                    uploadProgressContainer.style.left = '50%';
+                    uploadProgressContainer.style.transform = 'translate(-50%, -50%)';
+                    uploadProgressContainer.style.background = 'white';
+                    uploadProgressContainer.style.padding = '20px';
+                    uploadProgressContainer.style.borderRadius = '8px';
+                    uploadProgressContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                    uploadProgressContainer.style.zIndex = '9999';
+                    uploadProgressContainer.style.width = '300px';
+                    uploadProgressContainer.style.textAlign = 'center';
+                    
+                    const progressTitle = document.createElement('h3');
+                    progressTitle.textContent = '上傳圖片中...';
+                    
+                    const progressText = document.createElement('div');
+                    progressText.style.margin = '10px 0';
+                    progressText.textContent = `0/${truckImages.length} 已完成`;
+                    
+                    const progressBar = document.createElement('div');
+                    progressBar.style.height = '8px';
+                    progressBar.style.background = '#eee';
+                    progressBar.style.borderRadius = '4px';
+                    progressBar.style.overflow = 'hidden';
+                    
+                    const progressFill = document.createElement('div');
+                    progressFill.style.height = '100%';
+                    progressFill.style.background = 'var(--primary-color)';
+                    progressFill.style.width = '0%';
+                    progressFill.style.transition = 'width 0.3s';
+                    
+                    progressBar.appendChild(progressFill);
+                    uploadProgressContainer.appendChild(progressTitle);
+                    uploadProgressContainer.appendChild(progressText);
+                    uploadProgressContainer.appendChild(progressBar);
+                    
+                    document.body.appendChild(uploadProgressContainer);
+                    
+                    try {
+                        for (let i = 0; i < truckImages.length; i++) {
+                            const file = truckImages[i];
+                            
+                            // 更新進度顯示
+                            progressFill.style.width = `${(i / truckImages.length) * 100}%`;
+                            progressText.textContent = `${i}/${truckImages.length} 已完成`;
+                            
+                            // 創建唯一的檔案名
+                            const fileName = `trucks/${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
+                            
+                            // 創建元數據以設置內容類型
+                            const metadata = {
+                                contentType: file.type,
+                                customMetadata: {
+                                    originalName: file.name,
+                                    truckId: truckId || 'new',
+                                    uploadedBy: currentUser ? currentUser.email : 'anonymous',
+                                    uploadTime: new Date().toISOString()
+                                }
+                            };
+                            
+                            // 上傳到 Firebase Storage
+                            const fileRef = storage.ref().child(fileName);
+                            
+                            // 使用帶進度監控的上傳任務
+                            const uploadTask = fileRef.put(file, metadata);
+                            
+                            // 設置進度監聽器
+                            uploadTask.on('state_changed', 
+                                (snapshot) => {
+                                    // 計算單個文件的進度
+                                    const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
+                                    // 計算總體進度（當前文件的進度 + 已完成文件的進度）
+                                    const totalProgress = ((i + fileProgress) / truckImages.length) * 100;
+                                    progressFill.style.width = `${totalProgress}%`;
+                                },
+                                (error) => {
+                                    console.error('上傳圖片失敗:', error);
+                                }
+                            );
+                            
+                            // 等待上傳完成
+                            await uploadTask;
+                            
+                            // 獲取下載 URL
+                            const downloadUrl = await fileRef.getDownloadURL();
+                            imageUrls.push(downloadUrl);
+                            
+                            // 更新進度顯示
+                            progressText.textContent = `${i + 1}/${truckImages.length} 已完成`;
+                        }
+                    } finally {
+                        // 移除進度指示器
+                        document.body.removeChild(uploadProgressContainer);
+                    }
+                }
+
                 if (truckImages.length > 0) {
                     for (const file of truckImages) {
                         // 創建唯一的檔案名
                         const fileName = `trucks/${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
                         
+                        // 創建元數據以設置內容類型
+                        const metadata = {
+                            contentType: file.type,
+                            customMetadata: {
+                                originalName: file.name,
+                                truckId: truckId || 'new',
+                                uploadedBy: currentUser ? currentUser.email : 'anonymous',
+                                uploadTime: new Date().toISOString()
+                            }
+                        };
+                        
                         // 上傳到 Firebase Storage
                         const fileRef = storage.ref().child(fileName);
-                        await fileRef.put(file);
+                        await fileRef.put(file, metadata);
                         
                         // 獲取下載 URL
                         const downloadUrl = await fileRef.getDownloadURL();
@@ -1982,13 +2569,31 @@
                 
                 // 保存到 Firestore
                 if (truckId) {
+                    // 獲取當前車輛數據，檢查狀態是否變更
+                    const oldTruckDoc = await db.collection('trucks').doc(truckId).get();
+                    const oldTruck = oldTruckDoc.data();
+                    
                     // 更新現有車輛
                     await db.collection('trucks').doc(truckId).update(formData);
+                    
+                    // 檢查狀態是否變更，若變更則發送通知
+                    if (oldTruck.status !== formData.status) {
+                        createTruckStatusNotification(
+                            { brand: formData.brand, model: formData.model, year: formData.year },
+                            oldTruck.status,
+                            formData.status
+                        );
+                    }
                 } else {
                     // 添加新車輛
                     formData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                     formData.views = 0;
-                    await db.collection('trucks').add(formData);
+                    const newTruckRef = await db.collection('trucks').add(formData);
+                    
+                    // 創建新車輛上架通知
+                    const title = '新車輛上架';
+                    const message = `${formData.brand} ${formData.model} (${formData.year}年) 已新上架，售價 ${formData.price} 萬元`;
+                    createNotification(title, message);
                 }
                 
                 // 成功處理
@@ -2002,13 +2607,58 @@
                 
             } catch (error) {
                 console.error('儲存車輛資訊失敗:', error);
-                alert('儲存車輛資訊失敗，請稍後再試');
+                alert('儲存失敗: ' + error.message);
             } finally {
                 // 恢復按鈕狀態
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
             }
         });
+
+        // 車輛資料驗證規則
+        const validationRules = {
+            price: { min: 1, max: 3000, message: '價格需在 1-3000 萬元範圍內' },
+            weight: { min: 0.1, max: 50, message: '載重需在 0.1-50 噸範圍內' },
+            length: { min: 3, max: 50, message: '長度需在 3-50 呎範圍內' },
+            year: { min: 1980, max: new Date().getFullYear() + 1, message: `年份需在 1980-${new Date().getFullYear() + 1} 範圍內` }
+        };
+
+        // 實時輸入驗證
+        document.getElementById('truck-price').addEventListener('input', function() {
+            validateInput(this, 'price');
+        });
+
+        document.getElementById('truck-weight').addEventListener('input', function() {
+            validateInput(this, 'weight');
+        });
+
+        document.getElementById('truck-length').addEventListener('input', function() {
+            validateInput(this, 'length');
+        });
+
+        // 驗證輸入函數
+        function validateInput(input, type) {
+            const value = parseFloat(input.value);
+            const rule = validationRules[type];
+            
+            // 清除之前的錯誤提示
+            const existingError = input.parentElement.querySelector('.validation-error');
+            if (existingError) existingError.remove();
+            
+            // 檢查值是否在範圍內
+            if (value < rule.min || value > rule.max || isNaN(value)) {
+                // 添加錯誤提示
+                const errorSpan = document.createElement('span');
+                errorSpan.className = 'validation-error';
+                errorSpan.style.color = 'red';
+                errorSpan.style.fontSize = 'small';
+                errorSpan.textContent = rule.message;
+                input.parentElement.appendChild(errorSpan);
+                return false;
+            }
+            
+            return true;
+        }
         
         // ============ 用戶認證功能 (預留) ============
         
@@ -2379,6 +3029,12 @@
                     yearSelect.appendChild(option);
                 }
             }
+
+            // 初始化通知系統
+            initNotificationSystem();
+
+            // 排程圖片清理
+            scheduleImageCleanup();
             
         });
 
@@ -2684,6 +3340,307 @@
                 submitBtn.textContent = '儲存變更';
             }
         });
+
+        // ============ 通知系統功能 ============
+
+        // 初始化通知系統
+        function initNotificationSystem() {
+            // 如果已有監聽器，先清除
+            if (notificationsListener) {
+                notificationsListener();
+            }
+            
+            // 創建通知監聽器
+            notificationsListener = db.collection('notifications')
+                .orderBy('createdAt', 'desc')
+                .limit(10)
+                .onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const notification = change.doc.data();
+                            
+                            // 只顯示新通知，跳過頁面載入時的舊通知
+                            if (notification.createdAt && notification.createdAt.toMillis() > lastNotificationTime) {
+                                showNotification(notification.title, notification.message);
+                            }
+                        }
+                    });
+                    
+                    // 更新最後通知時間
+                    if (snapshot.docs.length > 0 && snapshot.docs[0].data().createdAt) {
+                        lastNotificationTime = snapshot.docs[0].data().createdAt.toMillis();
+                        localStorage.setItem('lastNotificationTime', lastNotificationTime);
+                    }
+                });
+        }
+
+        // 創建並發送通知
+        async function createNotification(title, message, targetUsers = []) {
+            try {
+                const notificationData = {
+                    title: title,
+                    message: message,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    read: false,
+                    targetUsers: targetUsers // 如果為空，則發送給所有用戶
+                };
+                
+                await db.collection('notifications').add(notificationData);
+            } catch (error) {
+                console.error('創建通知失敗:', error);
+            }
+        }
+
+        // 顯示通知
+        function showNotification(title, message) {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'notification-close';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                notification.remove();
+                
+                // 如果沒有更多通知，隱藏容器
+                if (container.children.length === 0) {
+                    container.style.display = 'none';
+                }
+            };
+            
+            const titleElement = document.createElement('div');
+            titleElement.className = 'notification-title';
+            titleElement.textContent = title;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = 'notification-message';
+            messageElement.textContent = message;
+            
+            const timeElement = document.createElement('div');
+            timeElement.className = 'notification-time';
+            timeElement.textContent = new Date().toLocaleTimeString();
+            
+            notification.appendChild(closeBtn);
+            notification.appendChild(titleElement);
+            notification.appendChild(messageElement);
+            notification.appendChild(timeElement);
+            
+            container.appendChild(notification);
+            container.style.display = 'block';
+            
+            // 5秒後自動關閉
+            setTimeout(() => {
+                notification.remove();
+                
+                // 如果沒有更多通知，隱藏容器
+                if (container.children.length === 0) {
+                    container.style.display = 'none';
+                }
+            }, 5000);
+        }
+
+        // 創建車輛狀態變更通知
+        function createTruckStatusNotification(truck, oldStatus, newStatus) {
+            // 狀態中文名稱
+            const statusNames = {
+                'available': '可售',
+                'pending': '洽談中',
+                'sold': '已售出'
+            };
+            
+            // 創建通知
+            const title = '車輛狀態更新';
+            const message = `${truck.brand} ${truck.model} (${truck.year}年) 狀態從「${statusNames[oldStatus] || oldStatus}」變更為「${statusNames[newStatus] || newStatus}」`;
+            
+            createNotification(title, message);
+        }
+
+        // 清理未使用的圖片
+        async function cleanupUnusedImages() {
+            try {
+                // 只有管理員才能執行此操作
+                if (!currentUser) return;
+                
+                console.log('開始清理未使用的圖片...');
+                
+                // 獲取所有車輛的圖片 URL
+                const trucksSnapshot = await db.collection('trucks').get();
+                const usedImageUrls = new Set();
+                
+                // 收集所有使用中的圖片 URL
+                trucksSnapshot.forEach(doc => {
+                    const truck = doc.data();
+                    if (truck.images && Array.isArray(truck.images)) {
+                        truck.images.forEach(url => usedImageUrls.add(url));
+                    }
+                });
+                
+                // 獲取儲存空間中的所有圖片
+                const imagesRef = storage.ref().child('trucks');
+                const imagesList = await imagesRef.listAll();
+                
+                // 檢查每個圖片是否被使用
+                let deletedCount = 0;
+                for (const imageRef of imagesList.items) {
+                    const url = await imageRef.getDownloadURL();
+                    
+                    // 如果圖片 URL 不在使用中列表，則刪除
+                    if (!usedImageUrls.has(url)) {
+                        // 檢查圖片上傳時間，只刪除超過 24 小時的未使用圖片
+                        try {
+                            const metadata = await imageRef.getMetadata();
+                            const uploadTime = new Date(metadata.timeCreated);
+                            const now = new Date();
+                            const hoursSinceUpload = (now - uploadTime) / (1000 * 60 * 60);
+                            
+                            if (hoursSinceUpload > 24) {
+                                await imageRef.delete();
+                                console.log(`已刪除未使用的圖片: ${imageRef.fullPath}`);
+                                deletedCount++;
+                            }
+                        } catch (metadataError) {
+                            console.error('獲取圖片元數據失敗:', metadataError);
+                        }
+                    }
+                }
+                
+                console.log(`清理完成，共刪除 ${deletedCount} 張未使用的圖片`);
+                
+                // 如果刪除了圖片，顯示通知
+                if (deletedCount > 0) {
+                    showNotification('系統維護', `已自動清理 ${deletedCount} 張未使用的圖片`);
+                }
+                
+            } catch (error) {
+                console.error('清理未使用圖片失敗:', error);
+            }
+        }
+
+        // 每週自動執行圖片清理（檢查上次執行時間）
+        function scheduleImageCleanup() {
+            // 檢查上次清理時間
+            const lastCleanupTime = localStorage.getItem('lastImageCleanupTime') || 0;
+            const now = Date.now();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000; // 一週的毫秒數
+            
+            // 如果距離上次清理超過一週，則執行清理
+            if (now - lastCleanupTime > oneWeek) {
+                cleanupUnusedImages().then(() => {
+                    // 更新上次清理時間
+                    localStorage.setItem('lastImageCleanupTime', now);
+                });
+            }
+        }
+
+        // 啟用圖片拖拽排序功能
+        function enableImageDragSort() {
+            const container = document.getElementById('image-previews');
+            if (!container) return;
+            
+            let dragSrcEl = null;
+            
+            function handleDragStart(e) {
+                this.style.opacity = '0.4';
+                dragSrcEl = this;
+                
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+            }
+            
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+            
+            function handleDragEnter(e) {
+                this.classList.add('over');
+            }
+            
+            function handleDragLeave(e) {
+                this.classList.remove('over');
+            }
+            
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                
+                // 如果拖放到自己上面，則不執行任何操作
+                if (dragSrcEl !== this) {
+                    // 獲取源元素和目標元素的索引
+                    const children = Array.from(container.children);
+                    const sourceIndex = children.indexOf(dragSrcEl);
+                    const targetIndex = children.indexOf(this);
+                    
+                    // 移動 editingImages 陣列中的元素
+                    if (editingImages.length > 0) {
+                        const temp = editingImages[sourceIndex];
+                        editingImages.splice(sourceIndex, 1);
+                        editingImages.splice(targetIndex, 0, temp);
+                    }
+                    
+                    // 移動 truckImages 陣列中的元素
+                    if (truckImages.length > 0 && sourceIndex < truckImages.length && targetIndex < truckImages.length) {
+                        const temp = truckImages[sourceIndex];
+                        truckImages.splice(sourceIndex, 1);
+                        truckImages.splice(targetIndex, 0, temp);
+                    }
+                    
+                    // 更新 UI
+                    if (targetIndex < sourceIndex) {
+                        container.insertBefore(dragSrcEl, this);
+                    } else {
+                        container.insertBefore(dragSrcEl, this.nextSibling);
+                    }
+                    
+                    // 更新所有圖片的索引顯示
+                    children.forEach((child, idx) => {
+                        const indexEl = child.querySelector('.image-index');
+                        if (indexEl) {
+                            indexEl.textContent = (idx + 1);
+                        }
+                    });
+                }
+                
+                return false;
+            }
+            
+            function handleDragEnd(e) {
+                this.style.opacity = '1';
+                
+                // 移除所有拖拽相關類別
+                document.querySelectorAll('.image-preview').forEach(item => {
+                    item.classList.remove('over');
+                });
+            }
+            
+            // 為每個圖片預覽添加拖拽事件
+            function addDragEvents() {
+                document.querySelectorAll('.image-preview').forEach(item => {
+                    item.setAttribute('draggable', 'true');
+                    item.addEventListener('dragstart', handleDragStart, false);
+                    item.addEventListener('dragenter', handleDragEnter, false);
+                    item.addEventListener('dragover', handleDragOver, false);
+                    item.addEventListener('dragleave', handleDragLeave, false);
+                    item.addEventListener('drop', handleDrop, false);
+                    item.addEventListener('dragend', handleDragEnd, false);
+                });
+            }
+            
+            // 添加一個監視器，當容器子元素變化時重新添加拖拽事件
+            const observer = new MutationObserver(mutations => {
+                addDragEvents();
+            });
+            
+            observer.observe(container, { childList: true });
+            
+            // 初始添加拖拽事件
+            addDragEvents();
+        }
 
     </script>
 </body>
