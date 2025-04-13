@@ -1052,12 +1052,25 @@
                         <label for="register-phone">個人手機</label>
                         <input type="tel" id="register-phone" pattern="[0-9]*" required>
                     </div>
+
+                    <div class="form-group">
+                        <label for="register-line-id">LINE ID (選填)</label>
+                        <input type="text" id="register-line-id" placeholder="請輸入您的LINE ID">
+                    </div>
                     
                     <div class="form-group">
                         <label for="register-company-email">公司信箱</label>
                         <div style="display: flex;">
                             <input type="text" id="register-company-email" placeholder="username" style="flex: 1;">
                             <span style="padding: 8px 0; align-self: center;">@chailease.com.tw</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-introduction">個人簡介 (選填，150字)</label>
+                        <textarea id="register-introduction" maxlength="150" rows="3" placeholder="簡單介紹自己負責的業務區域和特長"></textarea>
+                        <div class="text-right">
+                            <small><span id="intro-char-count">0</span>/150</small>
                         </div>
                     </div>
                     
@@ -1095,15 +1108,26 @@
                     </div>
                 </div>
                 
-                <!-- 新增銷售統計卡片 -->
+                <!-- 新增簡化版的統計卡片 -->
                 <div class="card">
                     <div class="card-content">
-                        <h3 class="mb-1">銷售統計</h3>
-                        <div id="sales-stats">
+                        <h3 class="mb-1">同事最新上架</h3>
+                        <div id="latest-trucks">
                             <p class="text-center">載入中...</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- 我的車輛列表卡片 -->
+                <div class="card">
+                    <div class="card-content">
+                        <h3 class="mb-1">我的車輛</h3>
+                        <div id="my-trucks-list">
+                            <p class="text-center">載入中...</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
         
@@ -1137,12 +1161,25 @@
                         <label for="edit-extension">公司分機</label>
                         <input type="tel" id="edit-extension" pattern="[0-9]*" required>
                     </div>
+
+                    <div class="form-group">
+                        <label for="edit-line-id">LINE ID (選填)</label>
+                        <input type="text" id="edit-line-id" placeholder="請輸入您的LINE ID">
+                    </div>
                     
                     <div class="form-group">
                         <label for="edit-company-email">公司信箱</label>
                         <div style="display: flex;">
                             <input type="text" id="edit-company-email" placeholder="username" style="flex: 1;">
                             <span style="padding: 8px 0; align-self: center;">@chailease.com.tw</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-introduction">個人簡介 (選填，150字)</label>
+                        <textarea id="edit-introduction" maxlength="150" rows="3" placeholder="簡單介紹自己負責的業務區域和特長"></textarea>
+                        <div class="text-right">
+                            <small><span id="edit-intro-char-count">0</span>/150</small>
                         </div>
                     </div>
                     
@@ -2819,6 +2856,10 @@
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
             }
+
+            // 添加賣家郵箱到表單數據
+            formData.sellerEmail = currentUser.email;
+
         });
         
         // ============ 用戶認證功能 (預留) ============
@@ -3034,6 +3075,8 @@
             const phone = document.getElementById('register-phone').value;
             const companyEmail = document.getElementById('register-company-email').value;
             const fullCompanyEmail = companyEmail ? `${companyEmail}@chailease.com.tw` : '';
+            const lineId = document.getElementById('register-line-id').value;
+            const introduction = document.getElementById('register-introduction').value;
             
             // 表單驗證
             if (!email || !region || !department || !employeeId || !extension || !phone) {
@@ -3075,13 +3118,15 @@
                 // 儲存用戶資料到 Firestore
                 await db.collection('users').doc(userId).set({
                     email: email,
-                    name: name, // 新增這行
+                    name: name,
                     region: region,
                     department: department,
                     employeeId: employeeId,
                     extension: extension,
                     phone: phone,
                     companyEmail: fullCompanyEmail,
+                    lineId: lineId, // 新增
+                    introduction: introduction, // 新增
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     truckCount: 0
                 });
@@ -3256,11 +3301,46 @@
                                 <td>${userData.phone}</td>
                             </tr>
                             <tr>
+                                <td style="font-weight: bold;">LINE ID</td>
+                                <td>${userData.lineId || '未設定'}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: bold; vertical-align: top;">個人簡介</td>
+                                <td style="white-space: pre-line;">${userData.introduction || '未設定'}</td>
+                            </tr>
+                            <tr>
                                 <td style="font-weight: bold;">上傳車輛數</td>
                                 <td>${userData.truckCount || 0} 輛</td>
                             </tr>
                         </table>
                     `;
+
+                    // 在顯示完用戶資料表格後添加複製聯絡資訊按鈕
+                    document.getElementById('user-profile').innerHTML += `
+                        <div class="mt-2">
+                            <button type="button" class="btn" id="copy-contact-info">複製聯絡資訊</button>
+                        </div>
+                    `;
+
+                    // 綁定複製按鈕點擊事件
+                    document.getElementById('copy-contact-info').addEventListener('click', function() {
+                        const contactInfo = `姓名: ${userData.name || '未設定'}
+                    電話: ${userData.phone || '未設定'}
+                    分機: ${userData.extension || '未設定'}
+                    LINE ID: ${userData.lineId || '未設定'}
+                    電子郵件: ${currentUser.email}`;
+                        
+                        // 創建臨時文本區域進行複製
+                        const textarea = document.createElement('textarea');
+                        textarea.value = contactInfo;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        
+                        // 顯示複製成功提示
+                        alert('聯絡資訊已複製到剪貼板');
+                    });
                     
                     // 顯示銷售統計
                     showUserSalesStats();
@@ -3271,80 +3351,136 @@
                         <p class="text-center">獲取用戶資料失敗，請稍後再試</p>
                     `;
                 });
+
+            // 在最後添加
+            showUserTrucks(); // 顯示用戶的車輛列表
+
+            // 在最後添加
+            showLatestTrucks(); // 顯示同事最新上架的車輛
+
         }
 
-        // 顯示用戶銷售統計
-        function showUserSalesStats() {
+        // 顯示用戶的車輛列表
+        function showUserTrucks() {
             // 檢查用戶是否登入
             if (!currentUser) return;
             
-            const statsContainer = document.getElementById('sales-stats');
-            statsContainer.innerHTML = '<p class="text-center">載入中...</p>';
+            const trucksContainer = document.getElementById('my-trucks-list');
+            trucksContainer.innerHTML = '<p class="text-center">載入中...</p>';
             
             // 獲取該業務的車輛資料
             db.collection('trucks')
-                .where('sellerName', '==', currentUser.email) // 假設使用郵箱識別業務
+                .where('sellerEmail', '==', currentUser.email)
+                .orderBy('createdAt', 'desc')
+                .limit(5) // 只顯示最近5台
                 .get()
                 .then(querySnapshot => {
-                    // 初始化統計資料
-                    const stats = {
-                        total: querySnapshot.size,
-                        available: 0,
-                        pending: 0,
-                        sold: 0,
-                        totalViews: 0
-                    };
+                    if (querySnapshot.empty) {
+                        trucksContainer.innerHTML = '<p class="text-center">您還沒有上架任何車輛</p>';
+                        return;
+                    }
                     
-                    // 計算各種狀態的車輛數量
+                    // 渲染車輛列表
+                    trucksContainer.innerHTML = '';
+                    
                     querySnapshot.forEach(doc => {
-                        const truck = doc.data();
-                        stats.totalViews += truck.views || 0;
+                        const truck = { id: doc.id, ...doc.data() };
+                        
+                        // 根據狀態設定不同的樣式和按鈕
+                        let statusClass = '';
+                        let nextStatusText = '';
+                        let nextStatus = '';
                         
                         switch(truck.status) {
                             case 'available':
-                                stats.available++;
+                                statusClass = 'status-available';
+                                nextStatusText = '標記為洽談中';
+                                nextStatus = 'pending';
                                 break;
                             case 'pending':
-                                stats.pending++;
+                                statusClass = 'status-pending';
+                                nextStatusText = '標記為已售出';
+                                nextStatus = 'sold';
                                 break;
                             case 'sold':
-                                stats.sold++;
+                                statusClass = 'status-sold';
+                                nextStatusText = '恢復為可售';
+                                nextStatus = 'available';
                                 break;
                         }
+                        
+                        // 創建車輛卡片
+                        const truckItem = document.createElement('div');
+                        truckItem.className = 'card mb-2';
+                        truckItem.innerHTML = `
+                            <div class="card-content">
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <img src="${truck.images && truck.images.length > 0 ? truck.images[0] : '/api/placeholder/60/60'}" 
+                                        alt="${truck.brand} ${truck.model}" 
+                                        style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 10px;">
+                                    <div>
+                                        <div style="font-weight: bold;">${truck.brand} ${truck.model}</div>
+                                        <div>${truck.year}年 / ${truck.price}萬元</div>
+                                        <div class="card-status ${statusClass}" style="display: inline-block; font-size: 12px; margin-top: 4px;">
+                                            ${truck.status === 'available' ? '可售' : truck.status === 'pending' ? '洽談中' : '已售出'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-block change-status-btn" data-id="${truck.id}" data-status="${nextStatus}">
+                                        ${nextStatusText}
+                                    </button>
+                                    <button class="btn btn-block edit-truck-btn" data-id="${truck.id}">
+                                        編輯資訊
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        trucksContainer.appendChild(truckItem);
                     });
                     
-                    // 渲染統計資料
-                    statsContainer.innerHTML = `
-                        <table style="width: 100%;">
-                            <tr>
-                                <td style="width: 50%; font-weight: bold;">刊登車輛總數</td>
-                                <td>${stats.total} 輛</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold;">可售車輛</td>
-                                <td>${stats.available} 輛</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold;">洽談中車輛</td>
-                                <td>${stats.pending} 輛</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold;">已售出車輛</td>
-                                <td>${stats.sold} 輛</td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: bold;">累計瀏覽次數</td>
-                                <td>${stats.totalViews} 次</td>
-                            </tr>
-                        </table>
-                        
-                        <div class="mt-2">
-                            <button class="btn btn-block" id="view-my-trucks-btn">查看我的車輛</button>
-                        </div>
+                    // 添加查看全部按鈕
+                    const viewAllBtn = document.createElement('div');
+                    viewAllBtn.className = 'mt-2';
+                    viewAllBtn.innerHTML = `
+                        <button class="btn btn-block" id="view-all-my-trucks-btn">查看全部車輛</button>
                     `;
+                    trucksContainer.appendChild(viewAllBtn);
                     
-                    // 添加查看我的車輛按鈕事件
-                    document.getElementById('view-my-trucks-btn').addEventListener('click', function() {
+                    // 綁定狀態變更按鈕事件
+                    document.querySelectorAll('.change-status-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const truckId = this.dataset.id;
+                            const newStatus = this.dataset.status;
+                            
+                            // 更新車輛狀態
+                            db.collection('trucks').doc(truckId).update({
+                                status: newStatus,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            })
+                            .then(() => {
+                                alert('車輛狀態已更新');
+                                showUserTrucks(); // 重新載入
+                            })
+                            .catch(error => {
+                                console.error('更新車輛狀態失敗:', error);
+                                alert('更新失敗: ' + error.message);
+                            });
+                        });
+                    });
+                    
+                    // 綁定編輯按鈕事件
+                    document.querySelectorAll('.edit-truck-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const truckId = this.dataset.id;
+                            editTruck(truckId); // 使用現有的編輯車輛函數
+                            showPage('edit-page'); // 顯示編輯頁面
+                        });
+                    });
+                    
+                    // 綁定查看全部按鈕事件
+                    document.getElementById('view-all-my-trucks-btn').addEventListener('click', function() {
                         // 設置篩選條件為當前用戶的車輛
                         activeFilters = {
                             sellerEmail: currentUser.email,
@@ -3359,10 +3495,97 @@
                     });
                 })
                 .catch(error => {
-                    console.error('獲取銷售統計失敗:', error);
-                    statsContainer.innerHTML = '<p class="text-center">獲取銷售統計失敗，請稍後再試</p>';
+                    console.error('獲取用戶車輛失敗:', error);
+                    trucksContainer.innerHTML = '<p class="text-center">獲取車輛資訊失敗，請稍後再試</p>';
                 });
         }
+
+        // 顯示同事最新上架的車輛
+        function showLatestTrucks() {
+            // 檢查是否有用戶登入
+            if (!currentUser) return;
+            
+            const latestTrucksContainer = document.getElementById('latest-trucks');
+            latestTrucksContainer.innerHTML = '<p class="text-center">載入中...</p>';
+            
+            // 獲取除了當前用戶外的最新車輛
+            db.collection('trucks')
+                .where('status', '==', 'available') // 只顯示可售車輛
+                .where('sellerEmail', '!=', currentUser.email) // 排除自己的車輛
+                .orderBy('sellerEmail') // 必須先按郵箱排序，因為上面使用了不等於條件
+                .orderBy('createdAt', 'desc') // 然後按建立時間降序
+                .limit(5) // 只顯示最新5台
+                .get()
+                .then(querySnapshot => {
+                    if (querySnapshot.empty) {
+                        latestTrucksContainer.innerHTML = '<p class="text-center">目前沒有同事上架的可售車輛</p>';
+                        return;
+                    }
+                    
+                    // 渲染車輛列表
+                    latestTrucksContainer.innerHTML = '';
+                    
+                    querySnapshot.forEach(doc => {
+                        const truck = { id: doc.id, ...doc.data() };
+                        
+                        // 創建車輛卡片
+                        const truckItem = document.createElement('div');
+                        truckItem.className = 'card mb-2';
+                        truckItem.innerHTML = `
+                            <div class="card-content">
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <img src="${truck.images && truck.images.length > 0 ? truck.images[0] : '/api/placeholder/60/60'}" 
+                                        alt="${truck.brand} ${truck.model}" 
+                                        style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; margin-right: 10px;">
+                                    <div>
+                                        <div style="font-weight: bold;">${truck.brand} ${truck.model}</div>
+                                        <div>${truck.year}年 / ${truck.price}萬元</div>
+                                        <div>業務: ${truck.sellerName}</div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-success btn-block view-detail-btn" data-id="${truck.id}">查看詳情</button>
+                            </div>
+                        `;
+                        
+                        latestTrucksContainer.appendChild(truckItem);
+                    });
+                    
+                    // 綁定查看詳情按鈕事件
+                    document.querySelectorAll('.view-detail-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const truckId = this.dataset.id;
+                            viewTruckDetail(truckId); // 使用現有的查看車輛詳情函數
+                        });
+                    });
+                    
+                    // 添加查看全部按鈕
+                    const viewAllBtn = document.createElement('div');
+                    viewAllBtn.className = 'mt-2';
+                    viewAllBtn.innerHTML = `
+                        <button class="btn btn-block" id="view-all-latest-trucks-btn">查看全部可售車輛</button>
+                    `;
+                    latestTrucksContainer.appendChild(viewAllBtn);
+                    
+                    // 綁定查看全部按鈕事件
+                    document.getElementById('view-all-latest-trucks-btn').addEventListener('click', function() {
+                        // 重置篩選條件，只篩選可售車輛
+                        activeFilters = {
+                            status: 'available'
+                        };
+                        
+                        // 載入篩選後的車輛列表
+                        loadTrucks(true);
+                        
+                        // 顯示首頁
+                        showPage('home-page');
+                    });
+                })
+                .catch(error => {
+                    console.error('獲取最新車輛失敗:', error);
+                    latestTrucksContainer.innerHTML = '<p class="text-center">獲取最新車輛失敗，請稍後再試</p>';
+                });
+        }
+
 
         // 登出功能
         document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -3402,6 +3625,8 @@
                         document.getElementById('edit-name').value = userData.name || '';
                         document.getElementById('edit-phone').value = userData.phone || '';
                         document.getElementById('edit-extension').value = userData.extension || '';
+                        document.getElementById('edit-line-id').value = userData.lineId || '';
+                        document.getElementById('edit-introduction').value = userData.introduction || '';
                         
                         // 顯示頭像
                         if (userData.avatarUrl) {
@@ -3437,6 +3662,8 @@
             // 獲取表單數據
             const name = document.getElementById('edit-name').value;
             const phone = document.getElementById('edit-phone').value;
+            const lineId = document.getElementById('edit-line-id').value;
+            const introduction = document.getElementById('edit-introduction').value;
             const extension = document.getElementById('edit-extension').value;
             const companyEmailPrefix = document.getElementById('edit-company-email').value;
             const companyEmail = companyEmailPrefix ? `${companyEmailPrefix}@chailease.com.tw` : '';
@@ -3469,6 +3696,8 @@
                     phone: phone,
                     extension: extension,
                     companyEmail: companyEmail,
+                    lineId: lineId, // 新增
+                    introduction: introduction, // 新增
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
@@ -3494,6 +3723,15 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = '儲存變更';
             }
+        });
+
+        // 添加字數統計功能
+        document.getElementById('register-introduction').addEventListener('input', function() {
+            document.getElementById('intro-char-count').textContent = this.value.length;
+        });
+
+        document.getElementById('edit-introduction').addEventListener('input', function() {
+            document.getElementById('edit-intro-char-count').textContent = this.value.length;
         });
 
     </script>
