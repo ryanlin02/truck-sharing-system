@@ -392,6 +392,33 @@
         .slider-dot.active {
             background: white;
         }
+
+        /* 詳情頁圖片查看按鈕 */
+        .slider-image-wrapper {
+            position: relative;
+            height: 100%;
+            min-width: 100%;
+        }
+
+        .fullscreen-button {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .fullscreen-button:hover {
+            background: var(--primary-color);
+        }
         
         /* 懸浮添加按鈕 */
         .fab {
@@ -540,6 +567,105 @@
             box-shadow: var(--shadow-sm);
             padding: var(--spacing-md);
             margin-bottom: var(--spacing-md);
+        }
+
+        /* 全屏圖片查看相關樣式 */
+        .fullscreen-slider-container {
+            width: 100%;
+            height: calc(100vh - 150px);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+
+        .fullscreen-slider-nav {
+            display: flex;
+            justify-content: center;
+            padding: 10px 0;
+            background: rgba(0,0,0,0.5);
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .fullscreen-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        .fullscreen-dot.active {
+            background: white;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .zoom-controls button {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: 1px solid white;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        /* 圖片排序拖曳樣式 */
+        .image-preview.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--primary-color);
+        }
+
+        .image-preview {
+            cursor: move;
+            position: relative;
+        }
+
+        .main-image-badge {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--primary-color);
+            color: white;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 0 0 var(--radius-sm) 0;
+        }
+
+        .set-main-image {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .set-main-image:hover {
+            background: var(--primary-color);
         }
 
     </style>
@@ -1126,6 +1252,56 @@
             measurementId: "G-0PBEWXX6C0"
         };
 
+        // 在此位置添加圖片壓縮函數
+        // 圖片壓縮函數
+        async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    
+                    img.onload = function() {
+                        // 計算尺寸
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+                        
+                        // 創建canvas進行壓縮
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 轉為blob
+                        canvas.toBlob((blob) => {
+                            // 創建新的File對象
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            
+                            resolve(compressedFile);
+                        }, 'image/jpeg', quality);
+                    };
+                };
+            });
+        }
+
         // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -1618,14 +1794,21 @@
                 // 圖片輪播HTML
                 let sliderHTML = '';
                 let sliderDotsHTML = '';
-                
+
                 if (truck.images && truck.images.length > 0) {
                     // 圖片容器
                     sliderHTML = '<div class="slider-container">';
                     
                     // 添加每張圖片
                     truck.images.forEach((image, index) => {
-                        sliderHTML += `<img src="${image}" alt="車輛照片 ${index+1}" class="slider-image">`;
+                        sliderHTML += `
+                            <div class="slider-image-wrapper">
+                                <img src="${image}" alt="車輛照片 ${index+1}" class="slider-image">
+                                <div class="fullscreen-button" data-index="${index}">
+                                    <span>&#x26F6;</span>
+                                </div>
+                            </div>
+                        `;
                         sliderDotsHTML += `<div class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></div>`;
                     });
                     
@@ -1780,6 +1963,92 @@
                 dots.forEach(d => d.classList.remove('active'));
                 dots[newIndex].classList.add('active');
             });
+
+            // 添加全屏查看功能
+            const fullscreenButtons = document.querySelectorAll('.fullscreen-button');
+            fullscreenButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(button.dataset.index);
+                    
+                    const modal = document.getElementById('fullscreen-image-modal');
+                    const container = modal.querySelector('.fullscreen-slider-container');
+                    const nav = modal.querySelector('.fullscreen-slider-nav');
+                    
+                    // 清空容器
+                    container.innerHTML = '';
+                    nav.innerHTML = '';
+                    
+                    // 當前縮放等級
+                    let currentZoom = 1;
+                    
+                    // 添加圖片
+                    truck.images.forEach((imageUrl, i) => {
+                        const img = document.createElement('img');
+                        img.src = imageUrl;
+                        img.className = 'fullscreen-image';
+                        img.style.display = i === index ? 'block' : 'none';
+                        img.dataset.index = i;
+                        container.appendChild(img);
+                        
+                        // 添加導航點
+                        const dot = document.createElement('div');
+                        dot.className = `fullscreen-dot ${i === index ? 'active' : ''}`;
+                        dot.dataset.index = i;
+                        dot.addEventListener('click', () => {
+                            // 重置縮放
+                            currentZoom = 1;
+                            resetZoom();
+                            
+                            // 切換圖片
+                            container.querySelectorAll('.fullscreen-image').forEach(img => {
+                                img.style.display = 'none';
+                            });
+                            container.querySelector(`.fullscreen-image[data-index="${i}"]`).style.display = 'block';
+                            
+                            // 更新導航點
+                            nav.querySelectorAll('.fullscreen-dot').forEach(d => {
+                                d.classList.remove('active');
+                            });
+                            dot.classList.add('active');
+                        });
+                        nav.appendChild(dot);
+                    });
+                    
+                    // 綁定縮放按鈕
+                    document.getElementById('zoom-in').onclick = () => {
+                        currentZoom += 0.2;
+                        updateZoom();
+                    };
+                    
+                    document.getElementById('zoom-out').onclick = () => {
+                        currentZoom = Math.max(0.5, currentZoom - 0.2);
+                        updateZoom();
+                    };
+                    
+                    document.getElementById('zoom-reset').onclick = () => {
+                        currentZoom = 1;
+                        resetZoom();
+                    };
+                    
+                    function updateZoom() {
+                        const currentImg = container.querySelector('.fullscreen-image[style*="display: block"]');
+                        if (currentImg) {
+                            currentImg.style.transform = `scale(${currentZoom})`;
+                        }
+                    }
+                    
+                    function resetZoom() {
+                        container.querySelectorAll('.fullscreen-image').forEach(img => {
+                            img.style.transform = `scale(1)`;
+                        });
+                    }
+                    
+                    // 顯示模態窗口
+                    modal.style.display = 'block';
+                });
+            });
+
         }
         
         // 返回列表按鈕事件
@@ -1810,29 +2079,69 @@
         });
         
         // 處理圖片上傳預覽
-        truckImagesInput.addEventListener('change', (e) => {
+        truckImagesInput.addEventListener('change', async (e) => {
             const files = e.target.files;
             
-            // 清空預覽區域
-            imagePreviews.innerHTML = '';
-            truckImages = [];
+            if (!files.length) return;
             
-            // 添加新選擇的檔案
+            // 顯示處理中訊息
+            imagePreviews.innerHTML = '<p>處理圖片中，請稍候...</p>';
+            
+            // 保留原有的圖片（如果是編輯狀態）
+            let currentImages = [...truckImages];
+            
+            // 處理新選擇的檔案
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 
                 // 只接受圖片檔案
                 if (!file.type.startsWith('image/')) continue;
                 
-                truckImages.push(file);
+                try {
+                    // 壓縮圖片
+                    const compressedFile = await compressImage(file);
+                    currentImages.push(compressedFile);
+                } catch (error) {
+                    console.error('圖片壓縮失敗:', error);
+                    currentImages.push(file); // 如果壓縮失敗，使用原圖
+                }
+            }
+            
+            truckImages = currentImages;
+            truckImageOrder = Array.from({ length: truckImages.length }, (_, i) => i);
+            
+            // 清空預覽區域
+            imagePreviews.innerHTML = '';
+            
+            // 渲染預覽
+            renderImagePreviews();
+        });
+
+        // 渲染圖片預覽的函數
+        function renderImagePreviews() {
+            imagePreviews.innerHTML = '';
+            
+            // 根據排序顯示圖片
+            truckImageOrder.forEach((originalIndex, displayIndex) => {
+                const file = truckImages[originalIndex];
                 
                 // 創建預覽元素
                 const preview = document.createElement('div');
                 preview.className = 'image-preview';
+                preview.dataset.index = originalIndex;
+                preview.draggable = true;
                 
                 const img = document.createElement('img');
                 img.src = URL.createObjectURL(file);
                 
+                // 添加拖拽事件
+                preview.addEventListener('dragstart', handleDragStart);
+                preview.addEventListener('dragover', handleDragOver);
+                preview.addEventListener('dragleave', handleDragLeave);
+                preview.addEventListener('drop', handleDrop);
+                preview.addEventListener('dragend', handleDragEnd);
+                
+                // 移除按鈕
                 const removeBtn = document.createElement('div');
                 removeBtn.className = 'remove-image';
                 removeBtn.innerHTML = '×';
@@ -1840,20 +2149,187 @@
                     e.stopPropagation();
                     
                     // 從陣列中移除檔案
-                    const index = truckImages.indexOf(file);
+                    const index = originalIndex;
                     if (index > -1) {
+                        // 移除圖片
                         truckImages.splice(index, 1);
+                        
+                        // 更新排序陣列
+                        truckImageOrder = truckImageOrder
+                            .filter(i => i !== index)
+                            .map(i => i > index ? i - 1 : i);
+                        
+                        // 更新主圖索引
+                        if (mainImageIndex === index) {
+                            mainImageIndex = 0;
+                        } else if (mainImageIndex > index) {
+                            mainImageIndex--;
+                        }
+                        
+                        // 重新渲染預覽
+                        renderImagePreviews();
                     }
-                    
-                    // 移除預覽元素
-                    preview.remove();
+                });
+                
+                // 設置主圖按鈕
+                const setMainBtn = document.createElement('div');
+                setMainBtn.className = 'set-main-image';
+                setMainBtn.innerHTML = '★';
+                setMainBtn.title = '設為主圖';
+                setMainBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    mainImageIndex = originalIndex;
+                    renderImagePreviews();
+                });
+                
+                // 如果是主圖，添加標記
+                if (originalIndex === mainImageIndex) {
+                    const mainBadge = document.createElement('div');
+                    mainBadge.className = 'main-image-badge';
+                    mainBadge.textContent = '主圖';
+                    preview.appendChild(mainBadge);
+                }
+                
+                // 點擊預覽開啟全屏查看
+                preview.addEventListener('click', () => {
+                    openFullscreenView(truckImageOrder.map(idx => truckImages[idx]), displayIndex);
                 });
                 
                 preview.appendChild(img);
                 preview.appendChild(removeBtn);
+                preview.appendChild(setMainBtn);
                 imagePreviews.appendChild(preview);
+            });
+        }
+
+        // 拖拽相關函數
+        let draggedItem = null;
+
+        function handleDragStart(e) {
+            this.classList.add('dragging');
+            draggedItem = this;
+            e.dataTransfer.setData('text/plain', this.dataset.index);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDragLeave() {
+            this.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedItem === this) return;
+            
+            const fromIndex = truckImageOrder.indexOf(parseInt(draggedItem.dataset.index));
+            const toIndex = truckImageOrder.indexOf(parseInt(this.dataset.index));
+            
+            // 重新排序
+            const element = truckImageOrder.splice(fromIndex, 1)[0];
+            truckImageOrder.splice(toIndex, 0, element);
+            
+            renderImagePreviews();
+        }
+
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+        }
+
+        // 開啟全屏查看
+        function openFullscreenView(images, startIndex = 0) {
+            const modal = document.getElementById('fullscreen-image-modal');
+            const container = modal.querySelector('.fullscreen-slider-container');
+            const nav = modal.querySelector('.fullscreen-slider-nav');
+            
+            // 清空容器
+            container.innerHTML = '';
+            nav.innerHTML = '';
+            
+            // 當前縮放等級
+            let currentZoom = 1;
+            
+            // 添加圖片
+            images.forEach((file, index) => {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'fullscreen-image';
+                img.style.display = index === startIndex ? 'block' : 'none';
+                img.dataset.index = index;
+                container.appendChild(img);
+                
+                // 添加導航點
+                const dot = document.createElement('div');
+                dot.className = `fullscreen-dot ${index === startIndex ? 'active' : ''}`;
+                dot.dataset.index = index;
+                dot.addEventListener('click', () => {
+                    // 重置縮放
+                    currentZoom = 1;
+                    resetZoom();
+                    
+                    // 切換圖片
+                    container.querySelectorAll('.fullscreen-image').forEach(img => {
+                        img.style.display = 'none';
+                    });
+                    container.querySelector(`.fullscreen-image[data-index="${index}"]`).style.display = 'block';
+                    
+                    // 更新導航點
+                    nav.querySelectorAll('.fullscreen-dot').forEach(d => {
+                        d.classList.remove('active');
+                    });
+                    dot.classList.add('active');
+                });
+                nav.appendChild(dot);
+            });
+            
+            // 綁定縮放按鈕
+            document.getElementById('zoom-in').onclick = () => {
+                currentZoom += 0.2;
+                updateZoom();
+            };
+            
+            document.getElementById('zoom-out').onclick = () => {
+                currentZoom = Math.max(0.5, currentZoom - 0.2);
+                updateZoom();
+            };
+            
+            document.getElementById('zoom-reset').onclick = () => {
+                currentZoom = 1;
+                resetZoom();
+            };
+            
+            function updateZoom() {
+                const currentImg = container.querySelector('.fullscreen-image[style*="display: block"]');
+                if (currentImg) {
+                    currentImg.style.transform = `scale(${currentZoom})`;
+                }
             }
-        });
+            
+            function resetZoom() {
+                container.querySelectorAll('.fullscreen-image').forEach(img => {
+                    img.style.transform = `scale(1)`;
+                });
+            }
+            
+            // 顯示模態窗口
+            modal.style.display = 'block';
+            
+            // 關閉按鈕事件
+            document.getElementById('close-fullscreen-modal').onclick = () => {
+                modal.style.display = 'none';
+            };
+            
+            // 點擊模態窗口背景關閉
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
+        }
         
         // 加載編輯的車輛資訊
         async function editTruck(truckId) {
@@ -1891,14 +2367,62 @@
                 editingImages = truck.images || [];
                 
                 // 顯示現有圖片預覽
+                // 重置圖片排序和主圖索引
+                truckImageOrder = Array.from({ length: editingImages.length }, (_, i) => i);
+                mainImageIndex = 0; // 默認第一張為主圖
+
+                // 顯示現有圖片預覽
                 if (editingImages.length > 0) {
-                    editingImages.forEach((imageUrl, index) => {
+                    // 創建拖曳排序預覽
+                    truckImageOrder.forEach((originalIndex, displayIndex) => {
+                        const imageUrl = editingImages[originalIndex];
+                        
                         const preview = document.createElement('div');
                         preview.className = 'image-preview';
+                        preview.dataset.index = originalIndex;
+                        preview.draggable = true;
                         
                         const img = document.createElement('img');
                         img.src = imageUrl;
                         
+                        // 添加拖曳事件
+                        preview.addEventListener('dragstart', (e) => {
+                            preview.classList.add('dragging');
+                            draggedItem = preview;
+                            e.dataTransfer.setData('text/plain', preview.dataset.index);
+                            e.dataTransfer.effectAllowed = 'move';
+                        });
+                        
+                        preview.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                        });
+                        
+                        preview.addEventListener('dragleave', () => {
+                            preview.classList.remove('dragover');
+                        });
+                        
+                        preview.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            
+                            if (draggedItem === preview) return;
+                            
+                            const fromIndex = truckImageOrder.indexOf(parseInt(draggedItem.dataset.index));
+                            const toIndex = truckImageOrder.indexOf(parseInt(preview.dataset.index));
+                            
+                            // 重新排序
+                            const element = truckImageOrder.splice(fromIndex, 1)[0];
+                            truckImageOrder.splice(toIndex, 0, element);
+                            
+                            // 重新渲染
+                            renderEditingImagePreviews();
+                        });
+                        
+                        preview.addEventListener('dragend', () => {
+                            preview.classList.remove('dragging');
+                        });
+                        
+                        // 移除按鈕
                         const removeBtn = document.createElement('div');
                         removeBtn.className = 'remove-image';
                         removeBtn.innerHTML = '×';
@@ -1906,14 +2430,52 @@
                             e.stopPropagation();
                             
                             // 從陣列中移除
+                            const index = originalIndex;
                             editingImages.splice(index, 1);
                             
-                            // 移除預覽元素
-                            preview.remove();
+                            // 更新排序陣列
+                            truckImageOrder = truckImageOrder
+                                .filter(i => i !== index)
+                                .map(i => i > index ? i - 1 : i);
+                            
+                            // 更新主圖索引
+                            if (mainImageIndex === index) {
+                                mainImageIndex = 0;
+                            } else if (mainImageIndex > index) {
+                                mainImageIndex--;
+                            }
+                            
+                            // 重新渲染
+                            renderEditingImagePreviews();
+                        });
+                        
+                        // 設置主圖按鈕
+                        const setMainBtn = document.createElement('div');
+                        setMainBtn.className = 'set-main-image';
+                        setMainBtn.innerHTML = '★';
+                        setMainBtn.title = '設為主圖';
+                        setMainBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            mainImageIndex = originalIndex;
+                            renderEditingImagePreviews();
+                        });
+                        
+                        // 如果是主圖，添加標記
+                        if (originalIndex === mainImageIndex) {
+                            const mainBadge = document.createElement('div');
+                            mainBadge.className = 'main-image-badge';
+                            mainBadge.textContent = '主圖';
+                            preview.appendChild(mainBadge);
+                        }
+                        
+                        // 點擊預覽開啟全屏查看
+                        preview.addEventListener('click', () => {
+                            openEditingFullscreenView(displayIndex);
                         });
                         
                         preview.appendChild(img);
                         preview.appendChild(removeBtn);
+                        preview.appendChild(setMainBtn);
                         imagePreviews.appendChild(preview);
                     });
                 }
@@ -1925,6 +2487,210 @@
                 console.error('載入車輛編輯資訊失敗:', error);
                 alert('載入車輛編輯資訊失敗，請稍後再試');
             }
+        }
+
+        // 渲染編輯中的圖片預覽
+        function renderEditingImagePreviews() {
+            imagePreviews.innerHTML = '';
+            
+            truckImageOrder.forEach((originalIndex, displayIndex) => {
+                const imageUrl = editingImages[originalIndex];
+                
+                const preview = document.createElement('div');
+                preview.className = 'image-preview';
+                preview.dataset.index = originalIndex;
+                preview.draggable = true;
+                
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                
+                // 添加拖曳事件
+                preview.addEventListener('dragstart', (e) => {
+                    preview.classList.add('dragging');
+                    draggedItem = preview;
+                    e.dataTransfer.setData('text/plain', preview.dataset.index);
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                preview.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+                
+                preview.addEventListener('dragleave', () => {
+                    preview.classList.remove('dragover');
+                });
+                
+                preview.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    
+                    if (draggedItem === preview) return;
+                    
+                    const fromIndex = truckImageOrder.indexOf(parseInt(draggedItem.dataset.index));
+                    const toIndex = truckImageOrder.indexOf(parseInt(preview.dataset.index));
+                    
+                    // 重新排序
+                    const element = truckImageOrder.splice(fromIndex, 1)[0];
+                    truckImageOrder.splice(toIndex, 0, element);
+                    
+                    // 重新渲染
+                    renderEditingImagePreviews();
+                });
+                
+                preview.addEventListener('dragend', () => {
+                    preview.classList.remove('dragging');
+                });
+                
+                // 移除按鈕
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'remove-image';
+                removeBtn.innerHTML = '×';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // 從陣列中移除
+                    const index = originalIndex;
+                    editingImages.splice(index, 1);
+                    
+                    // 更新排序陣列
+                    truckImageOrder = truckImageOrder
+                        .filter(i => i !== index)
+                        .map(i => i > index ? i - 1 : i);
+                    
+                    // 更新主圖索引
+                    if (mainImageIndex === index) {
+                        mainImageIndex = 0;
+                    } else if (mainImageIndex > index) {
+                        mainImageIndex--;
+                    }
+                    
+                    // 重新渲染
+                    renderEditingImagePreviews();
+                });
+                
+                // 設置主圖按鈕
+                const setMainBtn = document.createElement('div');
+                setMainBtn.className = 'set-main-image';
+                setMainBtn.innerHTML = '★';
+                setMainBtn.title = '設為主圖';
+                setMainBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    mainImageIndex = originalIndex;
+                    renderEditingImagePreviews();
+                });
+                
+                // 如果是主圖，添加標記
+                if (originalIndex === mainImageIndex) {
+                    const mainBadge = document.createElement('div');
+                    mainBadge.className = 'main-image-badge';
+                    mainBadge.textContent = '主圖';
+                    preview.appendChild(mainBadge);
+                }
+                
+                // 點擊預覽開啟全屏查看
+                preview.addEventListener('click', () => {
+                    openEditingFullscreenView(displayIndex);
+                });
+                
+                preview.appendChild(img);
+                preview.appendChild(removeBtn);
+                preview.appendChild(setMainBtn);
+                imagePreviews.appendChild(preview);
+            });
+        }
+
+        // 開啟編輯中圖片的全屏查看
+        function openEditingFullscreenView(startIndex = 0) {
+            const modal = document.getElementById('fullscreen-image-modal');
+            const container = modal.querySelector('.fullscreen-slider-container');
+            const nav = modal.querySelector('.fullscreen-slider-nav');
+            
+            // 清空容器
+            container.innerHTML = '';
+            nav.innerHTML = '';
+            
+            // 當前縮放等級
+            let currentZoom = 1;
+            
+            // 按排序獲取圖片URL列表
+            const orderedImages = truckImageOrder.map(index => editingImages[index]);
+            
+            // 添加圖片
+            orderedImages.forEach((imageUrl, index) => {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = 'fullscreen-image';
+                img.style.display = index === startIndex ? 'block' : 'none';
+                img.dataset.index = index;
+                container.appendChild(img);
+                
+                // 添加導航點
+                const dot = document.createElement('div');
+                dot.className = `fullscreen-dot ${index === startIndex ? 'active' : ''}`;
+                dot.dataset.index = index;
+                dot.addEventListener('click', () => {
+                    // 重置縮放
+                    currentZoom = 1;
+                    resetZoom();
+                    
+                    // 切換圖片
+                    container.querySelectorAll('.fullscreen-image').forEach(img => {
+                        img.style.display = 'none';
+                    });
+                    container.querySelector(`.fullscreen-image[data-index="${index}"]`).style.display = 'block';
+                    
+                    // 更新導航點
+                    nav.querySelectorAll('.fullscreen-dot').forEach(d => {
+                        d.classList.remove('active');
+                    });
+                    dot.classList.add('active');
+                });
+                nav.appendChild(dot);
+            });
+            
+            // 綁定縮放按鈕
+            document.getElementById('zoom-in').onclick = () => {
+                currentZoom += 0.2;
+                updateZoom();
+            };
+            
+            document.getElementById('zoom-out').onclick = () => {
+                currentZoom = Math.max(0.5, currentZoom - 0.2);
+                updateZoom();
+            };
+            
+            document.getElementById('zoom-reset').onclick = () => {
+                currentZoom = 1;
+                resetZoom();
+            };
+            
+            function updateZoom() {
+                const currentImg = container.querySelector('.fullscreen-image[style*="display: block"]');
+                if (currentImg) {
+                    currentImg.style.transform = `scale(${currentZoom})`;
+                }
+            }
+            
+            function resetZoom() {
+                container.querySelectorAll('.fullscreen-image').forEach(img => {
+                    img.style.transform = `scale(1)`;
+                });
+            }
+            
+            // 顯示模態窗口
+            modal.style.display = 'block';
+            
+            // 關閉按鈕事件
+            document.getElementById('close-fullscreen-modal').onclick = () => {
+                modal.style.display = 'none';
+            };
+            
+            // 點擊模態窗口背景關閉
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
         }
         
         // 表單提交處理
@@ -1960,10 +2726,55 @@
                 };
                 
                 // 上傳新圖片（如果有）
-                let imageUrls = [...editingImages]; // 保留編輯時未刪除的原有圖片
-                
+                let imageUrls = [];
+
+                // 處理現有的編輯圖片（按照排序和主圖設置）
+                if (editingImages.length > 0) {
+                    // 排序後的編輯圖片URLs
+                    const orderedEditingImages = [];
+                    
+                    // 首先添加主圖（如果主圖在editingImages中）
+                    if (mainImageIndex < editingImages.length) {
+                        orderedEditingImages.push(editingImages[mainImageIndex]);
+                    }
+                    
+                    // 添加其他圖片（按排序）
+                    truckImageOrder.forEach(index => {
+                        if (index !== mainImageIndex && index < editingImages.length) {
+                            orderedEditingImages.push(editingImages[index]);
+                        }
+                    });
+                    
+                    imageUrls = orderedEditingImages;
+                }
+
+                // 處理新上傳的圖片
                 if (truckImages.length > 0) {
-                    for (const file of truckImages) {
+                    // 排序後的新圖片
+                    const orderedNewImages = [];
+                    
+                    // 處理主圖索引對應的新圖片
+                    let mainImageProcessed = false;
+                    if (mainImageIndex >= editingImages.length) {
+                        // 主圖是新上傳的圖片
+                        const adjustedIndex = mainImageIndex - editingImages.length;
+                        if (adjustedIndex >= 0 && adjustedIndex < truckImages.length) {
+                            orderedNewImages.push(truckImages[adjustedIndex]);
+                            mainImageProcessed = true;
+                        }
+                    }
+                    
+                    // 添加其他新圖片（按排序）
+                    for (let i = 0; i < truckImages.length; i++) {
+                        if (mainImageProcessed && i === mainImageIndex - editingImages.length) {
+                            // 跳過已處理的主圖
+                            continue;
+                        }
+                        orderedNewImages.push(truckImages[i]);
+                    }
+                    
+                    // 上傳新圖片
+                    for (const file of orderedNewImages) {
                         // 創建唯一的檔案名
                         const fileName = `trucks/${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`;
                         
@@ -1976,7 +2787,7 @@
                         imageUrls.push(downloadUrl);
                     }
                 }
-                
+
                 // 添加圖片URL到表單數據
                 formData.images = imageUrls;
                 
@@ -2686,5 +3497,28 @@
         });
 
     </script>
+
+    <!-- 全屏圖片查看模態窗口 -->
+    <div id="fullscreen-image-modal" class="modal">
+        <div class="modal-content" style="max-width: 100%; padding: 0; background: black;">
+            <div class="modal-header" style="background: rgba(0,0,0,0.7);">
+                <h3>查看圖片</h3>
+                <span class="close" id="close-fullscreen-modal">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="fullscreen-slider-container">
+                    <!-- 全屏圖片將在這裡顯示 -->
+                </div>
+                <div class="fullscreen-slider-nav"></div>
+                
+                <div class="zoom-controls">
+                    <button id="zoom-in" class="btn">放大</button>
+                    <button id="zoom-reset" class="btn">重置</button>
+                    <button id="zoom-out" class="btn">縮小</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
